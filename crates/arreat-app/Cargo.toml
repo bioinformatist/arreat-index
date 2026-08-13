@@ -1,0 +1,12 @@
+[package]
+name = "arreat-app"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "arreat-app"
+path = "src/main.rs"
+
+[dependencies]
+arreat-core = { path = "../arreat-core" }
