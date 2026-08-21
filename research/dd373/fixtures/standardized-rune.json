@@ -1,0 +1,17 @@
+{
+  "family": "standardized_goods",
+  "observed_at": "2026-08-13T07:21:59Z",
+  "source_kind": "current_listing",
+  "identity_representation": "structured_category_metadata",
+  "sample": {
+    "label": "sample-01",
+    "category": "符文 / 33号符文",
+    "trade_context": "担保",
+    "quantity": "1.0",
+    "unit": "个",
+    "available_lots": "1",
+    "unit_price_cny": "40.0",
+    "price_cny": "40.0"
+  },
+  "source_semantics": "Category identifies the rune; listing fields supply current ask, lot availability, quantity, unit, and trade mode."
+}

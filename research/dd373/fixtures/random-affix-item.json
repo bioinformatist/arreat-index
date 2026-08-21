@@ -1,0 +1,18 @@
+{
+  "family": "random_affix_items",
+  "observed_at": "2026-08-13T07:22:01Z",
+  "source_kind": "current_listing",
+  "identity_representation": "broad_category_metadata_and_free_text",
+  "sample": {
+    "label": "sample-01",
+    "category": "亮金装备&饰品 / 戒指",
+    "sanitized_title": "双吸戒指：5吸蓝、3吸血、7冰抗、10电抗、2魔抗",
+    "trade_context": "担保",
+    "quantity": "1.0",
+    "unit": "",
+    "available_lots": "1",
+    "unit_price_cny": "1.0",
+    "price_cny": "1.0"
+  },
+  "source_semantics": "Equipment class is category metadata; affix names and values occur only in free text; listing fields supply the current ask and quantity."
+}

@@ -1,0 +1,33 @@
+{
+  "captured_at": "2026-08-13T07:22:41Z",
+  "user_agent": "Arreat-Index-Feasibility/0.1",
+  "request_count": 19,
+  "request_interval_ms": 1000,
+  "sources": [
+    {"url":"https://kf.dd373.com/helpdetail/e5675fb48f6a42e4a59ae5712b132965.html","http_status":200,"content_type":"text/html; charset=utf-8","bytes":37424,"sha256":"93b59ddd2c1e9ca6bcc3c727fcdaa0fa5fefbce4ceb8eab1a5355a01d65d6270"},
+    {"url":"https://kf.dd373.com/helpdetail/dc862c7b70d74880968d2386e544b5bf.html","http_status":200,"content_type":"text/html; charset=utf-8","bytes":50832,"sha256":"2264820320f15861114f3e8a6776d749afb059f193d3e7ac2b2cd855aafe1517"},
+    {"url":"https://kf.dd373.com/helpdetail/ba1506216a7c4cb5815e4db502aa296b.html","http_status":200,"content_type":"text/html; charset=utf-8","bytes":53405,"sha256":"870b4e77f3a1908c54561bd8f6a9342122712f7ea6a77fd129afa5822fb19c1f"},
+    {"url":"https://kf.dd373.com/helpdetail/05c05fd672c04f3997132e2b8064a2f4.html","http_status":200,"content_type":"text/html; charset=utf-8","bytes":48958,"sha256":"14cfc523b4c71e1b566212681391db27ba60305dac1b88e6d1b6cfda1cac5bcc"},
+    {"url":"https://kf.dd373.com/helpdetail/d67b1a53d2dc4a90802d41a1013828f7.html","http_status":200,"content_type":"text/html; charset=utf-8","bytes":42171,"sha256":"92eba514e973b2ded48c1b9289a8bba9d69137f483ead746982d92743c14134a"},
+    {"url":"https://kf.dd373.com/helpdetail/56678b00b3654ef88fbec8f30defecd0.html","http_status":200,"content_type":"text/html; charset=utf-8","bytes":41472,"sha256":"4c090263ca0fc81a41f846e4cecc29eaf5f1dc1b2ac7fa92aad2d4621210ceab"},
+    {"url":"https://game.dd373.com/api/game/list","http_status":200,"content_type":"application/json; charset=utf-8","bytes":286886,"sha256":"5812c02bda1a653f0b32dfd0f0ceeab8f1668c1e5a6f953aad3f08b868fbfcc3"},
+    {"url":"https://game.dd373.com/Api/GameRoute/List?gameId=c97d2193c0a445b6a717acb6fdb17c16","http_status":200,"content_type":"application/json; charset=utf-8","bytes":771,"sha256":"8098399038d0242498d35bc59d74df5844cb23502d5325ea6a225aae39eaddee"},
+    {"url":"https://game.dd373.com/Api/GameOther/List?parentId=c97d2193c0a445b6a717acb6fdb17c16","http_status":200,"content_type":"application/json; charset=utf-8","bytes":397,"sha256":"8a8971c00eca68c77de4c2677c6173a39fda1c5b1bfc38228383b95e8c93eee0"},
+    {"url":"https://game.dd373.com/Api/GameGoodsType/List?parentId=c97d2193c0a445b6a717acb6fdb17c16","http_status":200,"content_type":"application/json; charset=utf-8","bytes":9024,"sha256":"5fe7cb30e6de1711e4a99c6ed25333bde2f41fea097adc5585d9d683233c0908"},
+    {"url":"https://game.dd373.com/Api/GameOther/List?parentId=7b1751f92c844871ab80cae0822feea2","http_status":200,"content_type":"application/json; charset=utf-8","bytes":2513,"sha256":"587a2258c1a4e5d6fcd38cbcb2e70293df3e873e6c8b634c87e39281cc507df5"},
+    {"url":"https://game.dd373.com/Api/GameGoodsType/List?parentId=8405dd8baaa5498ab86ec2a7073282b4","http_status":200,"content_type":"application/json; charset=utf-8","bytes":10867,"sha256":"af119e83b4221edfe80dd6165f7547192c3c5ccc7ab1632d1a8c76914f08210e"},
+    {"url":"https://game.dd373.com/Api/GameGoodsType/List?parentId=d8713381cd354aa3a1bea74e1fe23ebe","http_status":200,"content_type":"application/json; charset=utf-8","bytes":2993,"sha256":"56e827fc43142b3a222ac0f9ee3501f71d2cb4bcba73910c17901ff33a439040"},
+    {"url":"https://game.dd373.com/Api/GameGoodsType/List?parentId=43f21d3cf4874007956939960e88db72","http_status":200,"content_type":"application/json; charset=utf-8","bytes":2993,"sha256":"2c4879c7cf810d67d259d91132fe3e4655acf73d13a4a49e5bd9d694b0546387"},
+    {"url":"https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=db9bf3bb148541cbb3beaeeb3daa3284","http_status":200,"content_type":"application/json; charset=utf-8","bytes":1289,"sha256":"71a6c3e64b33aa0bf31b62e2b9339f0bb827ac7391d0cb93516817bed8cbd377"},
+    {"url":"https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=ef0ca66605cf466cacd893dd90b23860","http_status":200,"content_type":"application/json; charset=utf-8","bytes":6900,"sha256":"6a53b800dd7abfabe06026e00a710ff2c6e268ab8ae5a8ff89db95509568c59f"},
+    {"url":"https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=82dda771368b49f3b2e6dd60e217aab3","http_status":200,"content_type":"application/json; charset=utf-8","bytes":6963,"sha256":"f361eb408ca4946d9a9a7b61f9ed4b1b1d8129bb517fc08b1b440f0b8b46c5f7"},
+    {"url":"https://kf.dd373.com/helpdetail/78dba8ca31b44712aef8e923f6c61984.html","http_status":200,"content_type":"text/html; charset=utf-8","bytes":59322,"sha256":"cdeed520977b0245ad3a7f359c94f85c0f4953ff95a9c15b960d4ae40e4742c9"},
+    {"url":"https://about.dd373.com/Index.html?catenum=3732&childcatenum=37325","http_status":200,"content_type":"text/html; charset=utf-8","bytes":26536,"sha256":"9dd2a83f896be56ef0ddd5587011e54f938f47b36d53fcb144945409e576b883"}
+  ],
+  "sanitization": {
+    "raw_responses_retained": false,
+    "listing_identifiers_removed": true,
+    "account_and_merchant_fields_removed": true,
+    "fixture_labels": "deterministic local sample labels"
+  }
+}

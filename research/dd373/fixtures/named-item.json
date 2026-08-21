@@ -1,0 +1,18 @@
+{
+  "family": "named_items",
+  "observed_at": "2026-08-13T07:22:00Z",
+  "source_kind": "current_listing",
+  "identity_representation": "broad_category_metadata_and_free_text",
+  "sample": {
+    "label": "sample-01",
+    "category": "暗金装备&饰品 / 武器",
+    "sanitized_title": "暗金 核瞳 眼球",
+    "trade_context": "担保",
+    "quantity": "1.0",
+    "unit": "",
+    "available_lots": "1",
+    "unit_price_cny": "25.0",
+    "price_cny": "25.0"
+  },
+  "source_semantics": "Broad equipment class is category metadata; specific identity and variants occur in free text; listing fields supply the current ask and quantity."
+}
