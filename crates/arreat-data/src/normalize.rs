@@ -174,7 +174,7 @@ fn normalize_bundle(bundle: InputBundle) -> Result<Snapshot> {
         bundle.required("data/global/excel/skills.txt")?,
     )?
     .into_iter()
-    .filter_map(|row| row.get(&["id"]).map(str::to_owned))
+    .filter_map(|row| row.get(&["id", "*id"]).map(str::to_owned))
     .collect();
     let item_types: BTreeSet<String> = parse_tsv(
         "data/global/excel/itemtypes.txt",
@@ -203,7 +203,7 @@ fn normalize_bundle(bundle: InputBundle) -> Result<Snapshot> {
         ),
     ] {
         for row in parse_tsv(path, bundle.required(path)?)? {
-            if matches!(row.get(&["spawnable"]), Some("0")) {
+            if row.get(&["spawnable"]) != Some("1") {
                 continue;
             }
             let Some(name_key) = row.get(&["name", "namestr"]) else {
@@ -220,7 +220,7 @@ fn normalize_bundle(bundle: InputBundle) -> Result<Snapshot> {
             {
                 if !item_types.contains(item_type) {
                     findings.push(AuditFinding {
-                        severity: FindingSeverity::Error,
+                        severity: FindingSeverity::Gap,
                         code: "unknown_item_type".to_owned(),
                         reference: reference.clone(),
                         message: format!("item type {item_type:?} is not present in itemtypes"),
@@ -275,17 +275,6 @@ fn normalize_bundle(bundle: InputBundle) -> Result<Snapshot> {
                     property_code: property_code.to_owned(),
                     source_operands,
                     interpretation,
-                });
-            }
-            if !(1..=3).contains(&modifiers.len()) {
-                findings.push(AuditFinding {
-                    severity: FindingSeverity::Error,
-                    code: "modifier_count".to_owned(),
-                    reference: reference.clone(),
-                    message: format!(
-                        "active affix has {} modifiers; expected one to three",
-                        modifiers.len()
-                    ),
                 });
             }
             affixes.push(AffixDefinition {
@@ -990,6 +979,80 @@ mod tests {
         assert_eq!(missing_findings[0].code, "missing_skill_parameter");
         assert!(matches!(unknown, ModifierInterpretation::Unknown { .. }));
         assert_eq!(unknown_findings[0].code, "unknown_skill");
+    }
+
+    #[test]
+    fn minimal_fixture_models_real_affix_activity_and_reference_boundaries() {
+        let fixture =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/d2r-minimal");
+        let snapshot = normalize_input(&fixture).expect("fixture normalizes");
+
+        let affix = |table, row_id| {
+            snapshot
+                .affixes
+                .iter()
+                .find(|affix| affix.id == CanonicalAffixId { table, row_id })
+        };
+
+        assert!(affix(AffixTable::MagicSuffix, 202).is_none());
+        assert!(affix(AffixTable::MagicSuffix, 203).is_none());
+
+        let cost_only = affix(AffixTable::MagicSuffix, 204).expect("active cost-only affix");
+        assert!(cost_only.modifiers.is_empty());
+        assert_eq!(cost_only.allowed_item_type_keys, ["unlisted_fixture_type"]);
+
+        let chance = &affix(AffixTable::MagicSuffix, 201)
+            .expect("chance affix")
+            .modifiers[0];
+        assert_eq!(chance.source_operands, operands(Some(1001), 0, 8));
+        assert_eq!(
+            chance.interpretation,
+            ModifierInterpretation::ChanceToCast {
+                skill_id: 1001,
+                chance_percent: 5,
+                skill_level: 8,
+            }
+        );
+
+        let charged = &affix(AffixTable::AutoMagic, 301)
+            .expect("charged affix")
+            .modifiers[0];
+        assert_eq!(charged.source_operands, operands(Some(1002), 12, 6));
+        assert_eq!(
+            charged.interpretation,
+            ModifierInterpretation::ChargedSkill {
+                skill_id: 1002,
+                max_charges: 12,
+                skill_level: 6,
+            }
+        );
+
+        let numeric = &affix(AffixTable::MagicPrefix, 101)
+            .expect("numeric affix")
+            .modifiers[0];
+        assert_eq!(numeric.source_operands, operands(None, 4, 1));
+        assert_eq!(
+            numeric.interpretation,
+            ModifierInterpretation::NumericRange {
+                minimum: 1,
+                maximum: 4,
+            }
+        );
+
+        let item_type_gaps = snapshot
+            .findings
+            .iter()
+            .filter(|finding| finding.code == "unknown_item_type")
+            .collect::<Vec<_>>();
+        assert_eq!(item_type_gaps.len(), 1);
+        assert_eq!(item_type_gaps[0].severity, FindingSeverity::Gap);
+        assert_eq!(item_type_gaps[0].reference, "magicsuffix:204");
+
+        let report = crate::audit_snapshot(&snapshot);
+        assert!(report.passed);
+        assert_eq!(report.error_count, 0);
+        assert_eq!(report.gap_count, 1);
+        assert!(report.warlock_sentinels.values().all(|value| *value));
     }
 
     #[test]

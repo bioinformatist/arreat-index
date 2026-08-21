@@ -1,3 +1,3 @@
-Id	Skill
+*Id	Skill
 1001	Synthetic Trigger Skill
 1002	Synthetic Charged Skill
