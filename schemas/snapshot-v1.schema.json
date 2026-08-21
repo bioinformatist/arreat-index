@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arreat-index.invalid/schemas/snapshot-v1.schema.json",
+  "title": "Arreat D2R normalized snapshot v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "build", "canonical_items", "affixes", "aliases", "findings"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "build": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["product", "build_key", "version", "input_sha256"],
+      "properties": {
+        "product": {"type": "string", "minLength": 1},
+        "build_key": {"type": "string", "minLength": 1},
+        "version": {"type": "string", "minLength": 1},
+        "input_sha256": {"type": "array", "items": {"$ref": "#/$defs/inputDigest"}}
+      }
+    },
+    "canonical_items": {"type": "array", "items": {"$ref": "#/$defs/item"}},
+    "affixes": {"type": "array", "items": {"$ref": "#/$defs/affix"}},
+    "aliases": {"type": "array", "items": {"$ref": "#/$defs/alias"}},
+    "findings": {"type": "array", "items": {"$ref": "#/$defs/finding"}}
+  },
+  "$defs": {
+    "itemId": {"type": "string", "pattern": "^(base|unique|set-item|runeword):.+$"},
+    "affixId": {"type": "string", "pattern": "^(magicprefix|magicsuffix|automagic):[0-9]+$"},
+    "inputDigest": {"type":"object","additionalProperties":false,"required":["path","sha256"],"properties":{"path":{"type":"string"},"sha256":{"type":"string","pattern":"^[0-9a-f]{64}$"}}},
+    "name": {"type":"object","additionalProperties":false,"required":["locale","string_key","text"],"properties":{"locale":{"enum":["enUS","zhTW","zhCN"]},"string_key":{"type":"string"},"text":{"type":"string"}}},
+    "item": {"type":"object","additionalProperties":false,"required":["id","source_table","source_key","names"],"properties":{"id":{"$ref":"#/$defs/itemId"},"source_table":{"type":"string"},"source_key":{"type":"string"},"names":{"type":"array","items":{"$ref":"#/$defs/name"}}}},
+    "sourceOperands": {"type":"object","additionalProperties":false,"required":["min","max"],"properties":{"parameter":{"type":"integer"},"min":{"type":"integer"},"max":{"type":"integer"}}},
+    "numericRange": {"type":"object","additionalProperties":false,"required":["kind","minimum","maximum"],"properties":{"kind":{"const":"numeric_range"},"minimum":{"type":"integer"},"maximum":{"type":"integer"}}},
+    "chanceToCast": {"type":"object","additionalProperties":false,"required":["kind","skill_id","chance_percent","skill_level"],"properties":{"kind":{"const":"chance_to_cast"},"skill_id":{"type":"integer"},"chance_percent":{"type":"integer","minimum":0},"skill_level":{"type":"integer","minimum":0}}},
+    "chargedSkill": {"type":"object","additionalProperties":false,"required":["kind","skill_id","max_charges","skill_level"],"properties":{"kind":{"const":"charged_skill"},"skill_id":{"type":"integer"},"max_charges":{"type":"integer","minimum":0},"skill_level":{"type":"integer","minimum":0}}},
+    "unknownInterpretation": {"type":"object","additionalProperties":false,"required":["kind"],"properties":{"kind":{"const":"unknown"},"ui_range_type":{"type":"integer","minimum":0}}},
+    "modifierInterpretation": {"oneOf":[{"$ref":"#/$defs/numericRange"},{"$ref":"#/$defs/chanceToCast"},{"$ref":"#/$defs/chargedSkill"},{"$ref":"#/$defs/unknownInterpretation"}]},
+    "modifier": {"type":"object","additionalProperties":false,"required":["property_code","source_operands","interpretation"],"properties":{"property_code":{"type":"string"},"source_operands":{"$ref":"#/$defs/sourceOperands"},"interpretation":{"$ref":"#/$defs/modifierInterpretation"}}},
+    "affix": {"type":"object","additionalProperties":false,"required":["id","affix_kind","name_key","names","level","level_requirement","group","frequency","allowed_item_type_keys","excluded_item_type_keys","modifiers"],"properties":{"id":{"$ref":"#/$defs/affixId"},"affix_kind":{"enum":["prefix","suffix","automatic"]},"name_key":{"type":"string"},"names":{"type":"array","items":{"$ref":"#/$defs/name"}},"level":{"type":"integer","minimum":0},"level_requirement":{"type":"integer","minimum":0},"group":{"type":"integer","minimum":0},"frequency":{"type":"integer","minimum":0},"allowed_item_type_keys":{"type":"array","items":{"type":"string"}},"excluded_item_type_keys":{"type":"array","items":{"type":"string"}},"modifiers":{"type":"array","minItems":1,"maxItems":3,"items":{"$ref":"#/$defs/modifier"}}}},
+    "alias": {"type":"object","additionalProperties":false,"required":["canonical_item_id","text","alias_kind","source","source_locator","observed_at","confidence","review_status"],"properties":{"canonical_item_id":{"$ref":"#/$defs/itemId"},"text":{"type":"string"},"alias_kind":{"enum":["legacy_translation","community_abbreviation","market_spelling"]},"source":{"type":"string"},"source_locator":{"type":"string"},"observed_at":{"type":"string"},"confidence":{"type":"number","minimum":0,"maximum":1},"review_status":{"enum":["authored_fixture","reviewed","unreviewed"]}}},
+    "finding": {"type":"object","additionalProperties":false,"required":["severity","code","reference","message"],"properties":{"severity":{"enum":["error","gap","info"]},"code":{"type":"string"},"reference":{"type":"string"},"message":{"type":"string"}}}
+  }
+}

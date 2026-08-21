@@ -1,0 +1,22 @@
+[
+  {
+    "canonical_item_id": "base:wa1",
+    "text": "旧书",
+    "alias_kind": "legacy_translation",
+    "source": "authored test fixture",
+    "source_locator": "fixture:alias-1",
+    "observed_at": "2026-08-20",
+    "confidence": 1.0,
+    "review_status": "authored_fixture"
+  },
+  {
+    "canonical_item_id": "base:wa1",
+    "text": "老书",
+    "alias_kind": "community_abbreviation",
+    "source": "authored test fixture",
+    "source_locator": "fixture:alias-2",
+    "observed_at": "2026-08-20",
+    "confidence": 1.0,
+    "review_status": "authored_fixture"
+  }
+]

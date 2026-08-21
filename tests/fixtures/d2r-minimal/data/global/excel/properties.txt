@@ -1,0 +1,4 @@
+code	stat1	func1	uiRangeType
+damage	item_damage_percent	1	5
+trigger		11	7
+charged		19	6

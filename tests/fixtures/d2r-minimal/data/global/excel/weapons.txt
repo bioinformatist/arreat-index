@@ -1,0 +1,2 @@
+code	namestr	type
+wa1	old_book	book

@@ -1,0 +1,22 @@
+[package]
+name = "arreat-data"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+build = "build.rs"
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "arreat-data"
+path = "src/main.rs"
+
+[dependencies]
+clap.workspace = true
+csv.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+tar.workspace = true
+thiserror.workspace = true

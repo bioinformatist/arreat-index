@@ -1,3 +1,6 @@
 /target
 /result
 .direnv
+/.cache/arreat-index/
+/exports/arreat-index-*.tar
+/snapshots/arreat-index-full-*.json

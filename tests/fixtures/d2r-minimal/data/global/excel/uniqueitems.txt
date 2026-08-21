@@ -1,0 +1,2 @@
+index	code	namestr	enabled
+Ars Al'Diablolos	wa1	Ars Al'Diablolos	1

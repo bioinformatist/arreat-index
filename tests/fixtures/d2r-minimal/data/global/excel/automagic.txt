@@ -1,0 +1,2 @@
+id	Name	spawnable	level	levelreq	frequency	group	mod1code	mod1param	mod1min	mod1max	itype1	etype1
+301	charged_fixture	1	25	12	1	10	charged	1002	12	6	book

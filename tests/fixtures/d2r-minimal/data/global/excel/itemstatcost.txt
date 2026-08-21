@@ -1,0 +1,2 @@
+Stat
+item_damage_percent
