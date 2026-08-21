@@ -1,3 +1,4 @@
-*Id	Skill
-1001	Synthetic Trigger Skill
-1002	Synthetic Charged Skill
+*Id	Skill	reqlevel
+1001	Synthetic Trigger Skill	1
+1002	Synthetic Charged Skill	6
+900003	Synthetic Item-Level Scaled Charged Skill	24

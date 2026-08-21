@@ -2,4 +2,5 @@ id	Name	spawnable	level	levelreq	frequency	group	mod1code	mod1param	mod1min	mod1
 201	triggered_fixture	1	20	10	1	9	trigger	1001	0	8	book
 202	inactive_blank_fixture		20	10	1	9	trigger	1001	0	8	book
 203	inactive_zero_fixture	0	20	10	1	9	trigger	1001	0	8	book
-204	cost_only_fixture	1	30	15	1	11					unlisted_fixture_type		250
+204	cost_only_fixture	1	30	15	1	11					book		250
+205	scaled_charged_fixture	1	35	18	1	12	charged	900003	-40	-15	book

@@ -11,7 +11,22 @@ cmp .cache/arreat-index/fixture-a/snapshot.json .cache/arreat-index/fixture-b/sn
 sha256sum .cache/arreat-index/fixture-a/snapshot.json .cache/arreat-index/fixture-b/snapshot.json
 check-jsonschema --schemafile schemas/snapshot-v1.schema.json .cache/arreat-index/fixture-a/snapshot.json
 cargo run -p arreat-data -- audit --snapshot .cache/arreat-index/fixture-a/snapshot.json --json .cache/arreat-index/fixture-a/audit.json --markdown .cache/arreat-index/fixture-a/audit.md
+jq -e '
+  ([.affixes[].modifiers[] | select(.interpretation.kind == "charged_skill")] | length == 1) and
+  ([.affixes[].modifiers[] | select(.interpretation.kind == "scaled_charged_skill")] | length == 1) and
+  any(.affixes[].modifiers[];
+    .source_operands == {parameter: 900003, min: -40, max: -15} and
+    .interpretation == {kind: "scaled_charged_skill", skill_id: 900003,
+      skill_required_level: 24, item_levels_per_skill_level: 5, base_charges: 40})
+' .cache/arreat-index/fixture-a/snapshot.json
+jq -e '
+  .passed and .error_count == 0 and .gap_count == 0 and
+  ([.warlock_sentinels[]] | all)
+' .cache/arreat-index/fixture-a/audit.json
 ```
+
+Rust tests additionally assert item-level evaluator boundaries and the 255
+charge cap, exact duplicate-item collapse, and fatal unequal same-ID items.
 
 For local full-data work, build the runnable Nix closure with
 `nix build .#arreat-data-static`, run `export` against your own

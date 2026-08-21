@@ -1,0 +1,9 @@
+# Model item-level scaled charged skills
+
+Schema v1 represents property-function-19 charged skills as fixed results only when Max is positive and Min is nonnegative, and as an Item-level Scaled Charged Skill Effect only when both operands are negative. Zero Max and mixed signs remain lossless Uninterpreted Modifiers with an explicit gap; negative chance-to-cast operands remain errors. The scaled value stores the skill ID, required level, item-level step, and base charges while preserving the signed Source Operands beside it.
+
+The model follows the engine branch: `step = max(1, (99 - required_level) / abs(raw_max))`, `skill_level = max(1, (item_level - required_level) / step)`, and `max_charges = clamp(base + skill_level * base / 8, 1, 255)` where `base = abs(raw_min)` and signed division truncates toward zero. Fixed Min zero means five charges; positive fixed Min is clamped to 1 through 255. The evaluator accepts an item level from its caller and uses widened arithmetic, so the snapshot never materializes an arbitrary item-level result.
+
+This typed value was chosen over raw-only output because consumers would otherwise repeat engine rules, over absolute-value conversion because that would falsely describe formula operands as fixed results, and over a generic expression engine because the public domain contains one evidenced mechanic rather than an open formula language. Exact canonical-item deduplication separately collapses only fully equal normalized records after localized names are sorted. Unequal records sharing an identity survive, so audit still exposes and rejects the conflict.
+
+Mechanics and metadata were checked on 2026-08-21 against [D2R Tools property metadata](https://d2r-tools.com/data/properties) and D2MOO's [`ITEMMODS_PropertyFunc19` reimplementation](https://github.com/ThePhrozenKeep/D2MOO/blob/master/source/D2Common/src/Items/ItemMods.cpp#L3786).

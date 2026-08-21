@@ -184,7 +184,7 @@ pub struct LocalizedName {
     pub text: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct CanonicalItem {
     pub id: CanonicalItemId,
     pub source_table: String,
@@ -235,6 +235,37 @@ pub struct SourceOperands {
     pub max: i32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ScaledChargedSkill {
+    pub skill_id: u32,
+    pub skill_required_level: u32,
+    pub item_levels_per_skill_level: u32,
+    pub base_charges: u32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ChargedSkillValues {
+    pub skill_level: u64,
+    pub max_charges: u32,
+}
+
+impl ScaledChargedSkill {
+    pub fn evaluate(&self, item_level: u64) -> ChargedSkillValues {
+        let levels_above_requirement =
+            item_level.saturating_sub(u64::from(self.skill_required_level));
+        let skill_level =
+            (levels_above_requirement / u64::from(self.item_levels_per_skill_level.max(1))).max(1);
+        let scaled_charges = u128::from(self.base_charges)
+            + u128::from(skill_level) * u128::from(self.base_charges) / 8;
+        let max_charges = scaled_charges.clamp(1, 255) as u32;
+
+        ChargedSkillValues {
+            skill_level,
+            max_charges,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum ModifierInterpretation {
@@ -252,6 +283,7 @@ pub enum ModifierInterpretation {
         max_charges: i32,
         skill_level: i32,
     },
+    ScaledChargedSkill(ScaledChargedSkill),
     Unknown {
         #[serde(skip_serializing_if = "Option::is_none")]
         ui_range_type: Option<u32>,
@@ -310,10 +342,11 @@ pub struct Snapshot {
 impl Snapshot {
     pub fn sort_stably(&mut self) {
         self.build.input_sha256.sort();
-        self.canonical_items.sort_by(|a, b| a.id.cmp(&b.id));
         for item in &mut self.canonical_items {
             item.names.sort();
         }
+        self.canonical_items.sort();
+        self.canonical_items.dedup();
         self.affixes.sort_by(|a, b| a.id.cmp(&b.id));
         for affix in &mut self.affixes {
             affix.names.sort();
@@ -344,5 +377,118 @@ impl Snapshot {
                 &b.message,
             ))
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn item(source_table: &str, source_key: &str, names: Vec<LocalizedName>) -> CanonicalItem {
+        CanonicalItem {
+            id: CanonicalItemId {
+                kind: ItemKind::Unique,
+                source_key: "synthetic-item".to_owned(),
+            },
+            source_table: source_table.to_owned(),
+            source_key: source_key.to_owned(),
+            names,
+        }
+    }
+
+    fn snapshot(items: Vec<CanonicalItem>) -> Snapshot {
+        Snapshot {
+            schema_version: SCHEMA_VERSION,
+            build: GameBuild {
+                product: "fixture".to_owned(),
+                build_key: "fixture".to_owned(),
+                version: "fixture".to_owned(),
+                input_sha256: Vec::new(),
+            },
+            canonical_items: items,
+            affixes: Vec::new(),
+            aliases: Vec::new(),
+            findings: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn scaled_charges_evaluate_boundaries_and_cap_without_overflow() {
+        let effect = ScaledChargedSkill {
+            skill_id: 900_001,
+            skill_required_level: 24,
+            item_levels_per_skill_level: 5,
+            base_charges: 20,
+        };
+
+        assert_eq!(
+            effect.evaluate(0),
+            ChargedSkillValues {
+                skill_level: 1,
+                max_charges: 22,
+            }
+        );
+        assert_eq!(effect.evaluate(24), effect.evaluate(28));
+        assert_eq!(effect.evaluate(29).skill_level, 1);
+        assert_eq!(effect.evaluate(34).skill_level, 2);
+        assert_eq!(effect.evaluate(34).max_charges, 25);
+
+        let capped = ScaledChargedSkill {
+            base_charges: 200,
+            ..effect
+        };
+        assert_eq!(capped.evaluate(34).max_charges, 250);
+        assert_eq!(capped.evaluate(39).max_charges, 255);
+        assert_eq!(capped.evaluate(u64::MAX).max_charges, 255);
+    }
+
+    #[test]
+    fn exact_items_deduplicate_after_nested_name_sorting() {
+        let en = LocalizedName {
+            locale: Locale::EnUs,
+            string_key: "synthetic-name".to_owned(),
+            text: "Synthetic Name".to_owned(),
+        };
+        let zh = LocalizedName {
+            locale: Locale::ZhCn,
+            string_key: "synthetic-name".to_owned(),
+            text: "Synthetic Name CN".to_owned(),
+        };
+        let first = item(
+            "uniqueitems.txt",
+            "synthetic-item",
+            vec![en.clone(), zh.clone()],
+        );
+        let second = item("uniqueitems.txt", "synthetic-item", vec![zh, en]);
+
+        let mut forward = snapshot(vec![first.clone(), second.clone()]);
+        let mut reverse = snapshot(vec![second, first]);
+        forward.sort_stably();
+        reverse.sort_stably();
+
+        assert_eq!(forward, reverse);
+        assert_eq!(forward.canonical_items.len(), 1);
+    }
+
+    #[test]
+    fn unequal_items_with_the_same_identity_remain_distinct() {
+        let base = item("uniqueitems.txt", "synthetic-item", Vec::new());
+        for different in [
+            item("setitems.txt", "synthetic-item", Vec::new()),
+            item("uniqueitems.txt", "different-source-key", Vec::new()),
+            item(
+                "uniqueitems.txt",
+                "synthetic-item",
+                vec![LocalizedName {
+                    locale: Locale::EnUs,
+                    string_key: "synthetic-name".to_owned(),
+                    text: "Synthetic Name".to_owned(),
+                }],
+            ),
+        ] {
+            let mut candidate = snapshot(vec![base.clone(), different]);
+            candidate.sort_stably();
+            assert_eq!(candidate.canonical_items.len(), 2);
+        }
     }
 }

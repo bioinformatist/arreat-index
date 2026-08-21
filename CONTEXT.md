@@ -27,6 +27,10 @@ _Avoid_: Proc as the canonical term
 **Charged Skill Effect**:
 An interpretation containing a skill, maximum charges, and skill level.
 
+**Item-level Scaled Charged Skill Effect**:
+A charged skill whose effective skill level and maximum charges derive from the item's level and the skill's required level while its Source Operands remain unchanged.
+_Avoid_: Negative charges, fixed charged skill
+
 **Uninterpreted Modifier**:
 An Affix Modifier whose Source Operands are valid but whose property metadata is not yet safely mapped to a typed meaning.
 _Avoid_: Invalid modifier

@@ -15,8 +15,8 @@ use crate::{
     model::{
         AffixDefinition, AffixKind, AffixModifier, AffixTable, AliasRecord, AuditFinding,
         CanonicalAffixId, CanonicalItem, CanonicalItemId, FindingSeverity, GameBuild, InputDigest,
-        ItemKind, Locale, LocalizedName, ModifierInterpretation, SCHEMA_VERSION, Snapshot,
-        SourceOperands,
+        ItemKind, Locale, LocalizedName, ModifierInterpretation, SCHEMA_VERSION,
+        ScaledChargedSkill, Snapshot, SourceOperands,
     },
 };
 
@@ -38,6 +38,11 @@ struct Localization {
 struct Row {
     number: u32,
     fields: BTreeMap<String, String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct SkillMetadata {
+    required_level: u32,
 }
 
 impl Row {
@@ -169,13 +174,11 @@ fn normalize_bundle(bundle: InputBundle) -> Result<Snapshot> {
     .into_iter()
     .filter_map(|row| row.get(&["stat"]).map(str::to_owned))
     .collect();
-    let skills: BTreeSet<String> = parse_tsv(
+    let skill_rows = parse_tsv(
         "data/global/excel/skills.txt",
         bundle.required("data/global/excel/skills.txt")?,
-    )?
-    .into_iter()
-    .filter_map(|row| row.get(&["id", "*id"]).map(str::to_owned))
-    .collect();
+    )?;
+    let skills = parse_skill_metadata(&skill_rows, &mut findings);
     let item_types: BTreeSet<String> = parse_tsv(
         "data/global/excel/itemtypes.txt",
         bundle.required("data/global/excel/itemtypes.txt")?,
@@ -214,19 +217,14 @@ fn normalize_bundle(bundle: InputBundle) -> Result<Snapshot> {
             let reference = id.to_string();
             let allowed_item_type_keys = numbered_cells(&row, "itype", 7);
             let excluded_item_type_keys = numbered_cells(&row, "etype", 5);
-            for item_type in allowed_item_type_keys
-                .iter()
-                .chain(excluded_item_type_keys.iter())
-            {
-                if !item_types.contains(item_type) {
-                    findings.push(AuditFinding {
-                        severity: FindingSeverity::Gap,
-                        code: "unknown_item_type".to_owned(),
-                        reference: reference.clone(),
-                        message: format!("item type {item_type:?} is not present in itemtypes"),
-                    });
-                }
-            }
+            record_unknown_item_types(
+                allowed_item_type_keys
+                    .iter()
+                    .chain(excluded_item_type_keys.iter()),
+                &item_types,
+                &reference,
+                &mut findings,
+            );
             let mut modifiers = Vec::new();
             for slot in 1..=3 {
                 let code_name = format!("mod{slot}code");
@@ -553,11 +551,101 @@ fn parse_localization_json(path: &str, bytes: &[u8]) -> Result<Value> {
     })
 }
 
+fn parse_skill_metadata(
+    rows: &[Row],
+    findings: &mut Vec<AuditFinding>,
+) -> BTreeMap<u32, SkillMetadata> {
+    let mut skills: BTreeMap<u32, SkillMetadata> = BTreeMap::new();
+    let mut conflicting_ids = BTreeSet::new();
+    for row in rows {
+        let reference = format!("skills:{}", row.number);
+        let Some(raw_id) = row.get(&["id", "*id"]) else {
+            findings.push(AuditFinding {
+                severity: FindingSeverity::Error,
+                code: "invalid_skill_id".to_owned(),
+                reference,
+                message: "skill row has no numeric ID".to_owned(),
+            });
+            continue;
+        };
+        let Ok(skill_id) = raw_id.parse::<u32>() else {
+            findings.push(AuditFinding {
+                severity: FindingSeverity::Error,
+                code: "invalid_skill_id".to_owned(),
+                reference,
+                message: format!("skill row has invalid ID {raw_id:?}"),
+            });
+            continue;
+        };
+        let required_level = match row.get(&["reqlevel"]) {
+            Some(raw_level) => match raw_level.parse::<u32>() {
+                Ok(level) => level,
+                Err(_) => {
+                    findings.push(AuditFinding {
+                        severity: FindingSeverity::Error,
+                        code: "invalid_skill_required_level".to_owned(),
+                        reference,
+                        message: format!(
+                            "skill {skill_id} has invalid required level {raw_level:?}"
+                        ),
+                    });
+                    conflicting_ids.insert(skill_id);
+                    skills.remove(&skill_id);
+                    continue;
+                }
+            },
+            None => 0,
+        };
+        let metadata = SkillMetadata { required_level };
+        if conflicting_ids.contains(&skill_id) {
+            continue;
+        }
+        match skills.get(&skill_id) {
+            Some(previous) if *previous != metadata => {
+                findings.push(AuditFinding {
+                    severity: FindingSeverity::Error,
+                    code: "conflicting_skill_required_level".to_owned(),
+                    reference,
+                    message: format!(
+                        "skill {skill_id} has conflicting required levels {} and {required_level}",
+                        previous.required_level
+                    ),
+                });
+                conflicting_ids.insert(skill_id);
+                skills.remove(&skill_id);
+            }
+            Some(_) => {}
+            None => {
+                skills.insert(skill_id, metadata);
+            }
+        }
+    }
+    skills
+}
+
+fn record_unknown_item_types<'a>(
+    values: impl Iterator<Item = &'a String>,
+    known: &BTreeSet<String>,
+    reference: &str,
+    findings: &mut Vec<AuditFinding>,
+) {
+    for item_type in values {
+        if !known.contains(item_type) {
+            findings.push(AuditFinding {
+                severity: FindingSeverity::Gap,
+                code: "unknown_item_type".to_owned(),
+                reference: reference.to_owned(),
+                message: format!("item type {item_type:?} is not present in itemtypes"),
+            });
+        }
+    }
+}
+
 fn interpret_modifier(
     property_code: &str,
     operands: &SourceOperands,
     property: Option<&Row>,
-    skills: &BTreeSet<String>,
+    skills: &BTreeMap<u32, SkillMetadata>,
     reference: &str,
     findings: &mut Vec<AuditFinding>,
 ) -> ModifierInterpretation {
@@ -590,7 +678,28 @@ fn interpret_modifier(
             minimum: operands.min.min(operands.max),
             maximum: operands.min.max(operands.max),
         },
-        6 | 7 => interpret_skill_modifier(
+        6 if property.get(&["func1"]) == Some("19") => interpret_skill_modifier(
+            property_code,
+            operands,
+            range_type,
+            skills,
+            reference,
+            findings,
+        ),
+        6 => {
+            findings.push(AuditFinding {
+                severity: FindingSeverity::Gap,
+                code: "uninterpreted_modifier".to_owned(),
+                reference: reference.to_owned(),
+                message: format!(
+                    "property {property_code:?} has uiRangeType 6 without function 19"
+                ),
+            });
+            ModifierInterpretation::Unknown {
+                ui_range_type: Some(6),
+            }
+        }
+        7 => interpret_skill_modifier(
             property_code,
             operands,
             range_type,
@@ -618,29 +727,24 @@ fn interpret_skill_modifier(
     property_code: &str,
     operands: &SourceOperands,
     range_type: u32,
-    skills: &BTreeSet<String>,
+    skills: &BTreeMap<u32, SkillMetadata>,
     reference: &str,
     findings: &mut Vec<AuditFinding>,
 ) -> ModifierInterpretation {
-    let valid_skill = operands
+    let skill_id = operands
         .parameter
-        .filter(|skill_id| skills.contains(&skill_id.to_string()));
-    let valid_values = operands.min >= 0 && operands.max >= 0;
-    if valid_skill.is_none() || !valid_values {
+        .and_then(|value| u32::try_from(value).ok());
+    let skill = skill_id.and_then(|skill_id| skills.get(&skill_id));
+    if skill.is_none() {
         let (code, detail) = if operands.parameter.is_none() {
             (
                 "missing_skill_parameter",
                 "has no skill parameter".to_owned(),
             )
-        } else if valid_skill.is_none() {
+        } else {
             (
                 "unknown_skill",
                 format!("references unknown skill {:?}", operands.parameter),
-            )
-        } else {
-            (
-                "invalid_skill_operands",
-                "has negative chance, charges, or skill level".to_owned(),
             )
         };
         findings.push(AuditFinding {
@@ -653,18 +757,58 @@ fn interpret_skill_modifier(
             ui_range_type: Some(range_type),
         };
     }
-    let skill_id = valid_skill.expect("checked above");
+    let skill_id = skill_id.expect("checked above");
+    let skill = skill.expect("checked above");
     if range_type == 7 {
+        if operands.min < 0 || operands.max < 0 {
+            findings.push(AuditFinding {
+                severity: FindingSeverity::Error,
+                code: "invalid_skill_operands".to_owned(),
+                reference: reference.to_owned(),
+                message: format!("property {property_code:?} has negative chance or skill level"),
+            });
+            return ModifierInterpretation::Unknown {
+                ui_range_type: Some(range_type),
+            };
+        }
         ModifierInterpretation::ChanceToCast {
-            skill_id,
+            skill_id: i32::try_from(skill_id).expect("source parameter was an i32"),
             chance_percent: if operands.min == 0 { 5 } else { operands.min },
             skill_level: operands.max,
         }
-    } else {
-        ModifierInterpretation::ChargedSkill {
+    } else if operands.min < 0 && operands.max < 0 {
+        let raw_step = (99_i64 - i64::from(skill.required_level)) / i64::from(operands.max).abs();
+        let item_levels_per_skill_level = u32::try_from(raw_step.max(1))
+            .expect("item-level step is bounded by the engine level cap");
+        let base_charges =
+            u32::try_from(i64::from(operands.min).abs()).expect("absolute i32 operand fits u32");
+        ModifierInterpretation::ScaledChargedSkill(ScaledChargedSkill {
             skill_id,
-            max_charges: operands.min,
+            skill_required_level: skill.required_level,
+            item_levels_per_skill_level,
+            base_charges,
+        })
+    } else if operands.min >= 0 && operands.max > 0 {
+        ModifierInterpretation::ChargedSkill {
+            skill_id: i32::try_from(skill_id).expect("source parameter was an i32"),
+            max_charges: if operands.min == 0 {
+                5
+            } else {
+                operands.min.clamp(1, 255)
+            },
             skill_level: operands.max,
+        }
+    } else {
+        findings.push(AuditFinding {
+            severity: FindingSeverity::Gap,
+            code: "uninterpreted_skill_operands".to_owned(),
+            reference: reference.to_owned(),
+            message: format!(
+                "property {property_code:?} has unsupported charged-skill operand signs"
+            ),
+        });
+        ModifierInterpretation::Unknown {
+            ui_range_type: Some(range_type),
         }
     }
 }
@@ -813,6 +957,9 @@ mod tests {
         let mut fields = BTreeMap::new();
         if let Some(range_type) = range_type {
             fields.insert("uirangetype".to_owned(), range_type.to_owned());
+            if range_type == "6" {
+                fields.insert("func1".to_owned(), "19".to_owned());
+            }
         }
         Row { number: 1, fields }
     }
@@ -830,8 +977,30 @@ mod tests {
         operands: SourceOperands,
         skills: &[&str],
     ) -> (ModifierInterpretation, Vec<AuditFinding>) {
+        let skills = skills
+            .iter()
+            .map(|value| (value.parse().unwrap(), 0))
+            .collect::<Vec<_>>();
+        interpret_with_metadata(range_type, operands, &skills)
+    }
+
+    fn interpret_with_metadata(
+        range_type: Option<&str>,
+        operands: SourceOperands,
+        skills: &[(u32, u32)],
+    ) -> (ModifierInterpretation, Vec<AuditFinding>) {
         let property = property(range_type);
-        let skills = skills.iter().map(|value| (*value).to_owned()).collect();
+        let skills = skills
+            .iter()
+            .map(|(id, required_level)| {
+                (
+                    *id,
+                    SkillMetadata {
+                        required_level: *required_level,
+                    },
+                )
+            })
+            .collect();
         let mut findings = Vec::new();
         let interpretation = interpret_modifier(
             "fixture",
@@ -893,6 +1062,56 @@ mod tests {
     }
 
     #[test]
+    fn skill_metadata_accepts_id_headers_and_required_levels() {
+        for header in ["*Id", "Id", "id"] {
+            let input = format!("{header}\treqlevel\n1001\t\n1002\t24\n");
+            let rows = parse_tsv("skills", input.as_bytes()).unwrap();
+            let mut findings = Vec::new();
+            let skills = parse_skill_metadata(&rows, &mut findings);
+
+            assert_eq!(skills[&1001].required_level, 0);
+            assert_eq!(skills[&1002].required_level, 24);
+            assert!(findings.is_empty());
+        }
+    }
+
+    #[test]
+    fn malformed_and_conflicting_skill_metadata_is_not_selected() {
+        let rows = parse_tsv(
+            "skills",
+            b"id\treqlevel\ninvalid\t1\n1001\tbad\n1002\t2\n1002\t3\n1003\t-1\n",
+        )
+        .unwrap();
+        let mut findings = Vec::new();
+        let skills = parse_skill_metadata(&rows, &mut findings);
+
+        assert!(skills.is_empty());
+        assert_eq!(
+            findings
+                .iter()
+                .map(|finding| finding.code.as_str())
+                .collect::<Vec<_>>(),
+            [
+                "invalid_skill_id",
+                "invalid_skill_required_level",
+                "conflicting_skill_required_level",
+                "invalid_skill_required_level",
+            ]
+        );
+    }
+
+    #[test]
+    fn unknown_item_types_remain_explicit_gaps() {
+        let values = ["missing_fixture_type".to_owned()];
+        let mut findings = Vec::new();
+        record_unknown_item_types(values.iter(), &BTreeSet::new(), "fixture:1", &mut findings);
+
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].severity, FindingSeverity::Gap);
+        assert_eq!(findings[0].code, "unknown_item_type");
+    }
+
+    #[test]
     fn localization_json_accepts_exactly_one_leading_bom() {
         let plain = br#"[{"Key":"fixture"}]"#;
         let with_bom = [b"\xef\xbb\xbf".as_slice(), plain].concat();
@@ -948,6 +1167,95 @@ mod tests {
     }
 
     #[test]
+    fn fixed_charged_defaults_and_caps_maximum_charges() {
+        let (defaulted, default_findings) =
+            interpret(Some("6"), operands(Some(1002), 0, 6), &["1002"]);
+        let (capped, capped_findings) =
+            interpret(Some("6"), operands(Some(1002), 999, 6), &["1002"]);
+
+        assert_eq!(
+            defaulted,
+            ModifierInterpretation::ChargedSkill {
+                skill_id: 1002,
+                max_charges: 5,
+                skill_level: 6,
+            }
+        );
+        assert_eq!(
+            capped,
+            ModifierInterpretation::ChargedSkill {
+                skill_id: 1002,
+                max_charges: 255,
+                skill_level: 6,
+            }
+        );
+        assert!(default_findings.is_empty());
+        assert!(capped_findings.is_empty());
+    }
+
+    #[test]
+    fn negative_charged_operands_become_lossless_scaled_inputs() {
+        let source = operands(Some(900_003), -40, -15);
+        let (interpretation, findings) =
+            interpret_with_metadata(Some("6"), source.clone(), &[(900_003, 24)]);
+
+        assert_eq!(source, operands(Some(900_003), -40, -15));
+        assert_eq!(
+            interpretation,
+            ModifierInterpretation::ScaledChargedSkill(ScaledChargedSkill {
+                skill_id: 900_003,
+                skill_required_level: 24,
+                item_levels_per_skill_level: 5,
+                base_charges: 40,
+            })
+        );
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn scaled_step_uses_signed_truncation_and_a_minimum_of_one() {
+        for required_level in [100, 110] {
+            let (interpretation, findings) = interpret_with_metadata(
+                Some("6"),
+                operands(Some(900_003), -8, -7),
+                &[(900_003, required_level)],
+            );
+            let ModifierInterpretation::ScaledChargedSkill(effect) = interpretation else {
+                panic!("expected scaled charged skill");
+            };
+            assert_eq!(effect.item_levels_per_skill_level, 1);
+            assert!(findings.is_empty());
+        }
+    }
+
+    #[test]
+    fn unsupported_charged_shapes_are_lossless_gaps() {
+        for (min, max) in [(10, 0), (-10, 2), (10, -2)] {
+            let source = operands(Some(1002), min, max);
+            let (interpretation, findings) = interpret(Some("6"), source.clone(), &["1002"]);
+
+            assert_eq!(source, operands(Some(1002), min, max));
+            assert_eq!(
+                interpretation,
+                ModifierInterpretation::Unknown {
+                    ui_range_type: Some(6)
+                }
+            );
+            assert_eq!(findings.len(), 1);
+            assert_eq!(findings[0].severity, FindingSeverity::Gap);
+            assert_eq!(findings[0].code, "uninterpreted_skill_operands");
+        }
+    }
+
+    #[test]
+    fn negative_chance_operands_remain_errors() {
+        let (_, findings) = interpret(Some("7"), operands(Some(1001), -1, 8), &["1001"]);
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].severity, FindingSeverity::Error);
+        assert_eq!(findings[0].code, "invalid_skill_operands");
+    }
+
+    #[test]
     fn unsupported_and_invalid_range_types_are_lossless_unknowns() {
         let (unsupported, unsupported_findings) =
             interpret(Some("3"), operands(Some(9), 10, 2), &[]);
@@ -999,7 +1307,7 @@ mod tests {
 
         let cost_only = affix(AffixTable::MagicSuffix, 204).expect("active cost-only affix");
         assert!(cost_only.modifiers.is_empty());
-        assert_eq!(cost_only.allowed_item_type_keys, ["unlisted_fixture_type"]);
+        assert_eq!(cost_only.allowed_item_type_keys, ["book"]);
 
         let chance = &affix(AffixTable::MagicSuffix, 201)
             .expect("chance affix")
@@ -1027,6 +1335,20 @@ mod tests {
             }
         );
 
+        let scaled = &affix(AffixTable::MagicSuffix, 205)
+            .expect("scaled charged affix")
+            .modifiers[0];
+        assert_eq!(scaled.source_operands, operands(Some(900_003), -40, -15));
+        assert_eq!(
+            scaled.interpretation,
+            ModifierInterpretation::ScaledChargedSkill(ScaledChargedSkill {
+                skill_id: 900_003,
+                skill_required_level: 24,
+                item_levels_per_skill_level: 5,
+                base_charges: 40,
+            })
+        );
+
         let numeric = &affix(AffixTable::MagicPrefix, 101)
             .expect("numeric affix")
             .modifiers[0];
@@ -1039,19 +1361,10 @@ mod tests {
             }
         );
 
-        let item_type_gaps = snapshot
-            .findings
-            .iter()
-            .filter(|finding| finding.code == "unknown_item_type")
-            .collect::<Vec<_>>();
-        assert_eq!(item_type_gaps.len(), 1);
-        assert_eq!(item_type_gaps[0].severity, FindingSeverity::Gap);
-        assert_eq!(item_type_gaps[0].reference, "magicsuffix:204");
-
         let report = crate::audit_snapshot(&snapshot);
         assert!(report.passed);
         assert_eq!(report.error_count, 0);
-        assert_eq!(report.gap_count, 1);
+        assert_eq!(report.gap_count, 0);
         assert!(report.warlock_sentinels.values().all(|value| *value));
     }
 

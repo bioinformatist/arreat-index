@@ -208,7 +208,7 @@ fn has_names<'a>(actual: impl Iterator<Item = &'a str>, expected: &[&str]) -> bo
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{AuditFinding, GameBuild};
+    use crate::{AuditFinding, CanonicalItem, CanonicalItemId, GameBuild, ItemKind};
 
     fn empty_snapshot() -> Snapshot {
         Snapshot {
@@ -245,5 +245,33 @@ mod tests {
         });
 
         assert!(!audit_snapshot(&snapshot).passed);
+    }
+
+    #[test]
+    fn unequal_items_with_the_same_identity_remain_fatal() {
+        let mut snapshot = empty_snapshot();
+        let id = CanonicalItemId {
+            kind: ItemKind::Unique,
+            source_key: "synthetic-item".to_owned(),
+        };
+        snapshot.canonical_items = vec![
+            CanonicalItem {
+                id: id.clone(),
+                source_table: "uniqueitems.txt".to_owned(),
+                source_key: "synthetic-item".to_owned(),
+                names: Vec::new(),
+            },
+            CanonicalItem {
+                id,
+                source_table: "setitems.txt".to_owned(),
+                source_key: "synthetic-item".to_owned(),
+                names: Vec::new(),
+            },
+        ];
+        snapshot.sort_stably();
+
+        let report = audit_snapshot(&snapshot);
+        assert_eq!(report.duplicate_item_identities, ["unique:synthetic-item"]);
+        assert!(!report.passed);
     }
 }
