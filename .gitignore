@@ -1,5 +1,6 @@
 /target
 /result
+/plans/
 .direnv
 /.cache/arreat-index/
 /exports/arreat-index-*.tar
