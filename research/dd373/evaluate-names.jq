@@ -6,111 +6,113 @@ def normalize_name:
   | gsub("６"; "6") | gsub("７"; "7") | gsub("８"; "8")
   | gsub("９"; "9") | ascii_downcase | gsub("[\\p{P}\\s]"; "");
 
-def allowed_id($family):
-  if $family == "unique" then startswith("unique:")
-  elif $family == "set" then startswith("set-item:")
-  elif $family == "mixed" then startswith("unique:") or startswith("set-item:")
-  else false
+def layer_sources($layer):
+  if $layer == "official" then ["official"]
+  elif $layer == "official_opencc" then ["official", "opencc"]
+  else ["official", "opencc", "community"]
   end;
 
-def candidates($catalog; $family):
-  [
-    $catalog.canonical_items[]
-    | select(.id | allowed_id($family))
-    | .id as $id
-    | .names[]
-    | select(.locale | IN("enUS", "zhTW", "zhCN"))
-    | (.text | normalize_name) as $name
-    | select($name != "")
-    | {id: $id, name: $name, length: ($name | length)}
-  ] | unique_by([.id, .name]);
-
-def resolve($catalog; $record):
+def match_candidates($candidates; $record):
   ($record.title | normalize_name) as $title
-  | [candidates($catalog; $record.family)[]
-     | .name as $name
-     | select($title | contains($name))] as $matches
-  | if ($matches | length) == 0 then {status: "unmatched"}
-    else ($matches | map(.length) | max) as $maximum
-    | ($matches | map(select(.length == $maximum) | .id) | unique) as $ids
-    | if ($ids | length) == 1
-      then {status: "resolved", canonical_id: $ids[0]}
-      else {status: "ambiguous"}
-      end
+  | [$candidates[]
+     | .normalized_name as $name
+     | select($title | contains($name))
+     | {id, source}];
+
+def classify($matches; $layer):
+  layer_sources($layer) as $sources
+  | [$matches[] | select(.source as $source | $sources | index($source))] as $selected
+  | ($selected | map(.id) | unique) as $ids
+  | if ($ids | length) == 0 then {status: "unmatched", sources: []}
+    elif ($ids | length) == 1 then
+      {status: "resolved", canonical_id: $ids[0], sources: ($selected | map(.source) | unique)}
+    else
+      {status: "filtered_multi_item", sources: ($selected | map(.source) | unique)}
     end;
 
-def aggregate_category($rows; $category):
-  [$rows[] | select(.record.category == $category)] as $selected
-  | {
-      category: $category,
-      total: ($selected | length),
-      resolved: ([$selected[] | select(.result.status == "resolved")] | length),
-      ambiguous: ([$selected[] | select(.result.status == "ambiguous")] | length),
-      unmatched: ([$selected[] | select(.result.status == "unmatched")] | length),
-      distinct_resolved_canonical_ids:
-        ([$selected[] | select(.result.status == "resolved") | .result.canonical_id] | unique)
-    };
+def aggregate($rows):
+  {
+    total: ($rows | length),
+    eligible_total: ([$rows[] | select(.result.status != "filtered_multi_item")] | length),
+    resolved: ([$rows[] | select(.result.status == "resolved")] | length),
+    filtered_multi_item: ([$rows[] | select(.result.status == "filtered_multi_item")] | length),
+    unmatched: ([$rows[] | select(.result.status == "unmatched")] | length),
+    distinct_resolved_canonical_ids:
+      ([$rows[] | select(.result.status == "resolved") | .result.canonical_id] | unique),
+    resolved_source_matches: {
+      official: ([$rows[] | select(.result.status == "resolved" and (.result.sources | index("official")))] | length),
+      opencc: ([$rows[] | select(.result.status == "resolved" and (.result.sources | index("opencc")))] | length),
+      community: ([$rows[] | select(.result.status == "resolved" and (.result.sources | index("community")))] | length)
+    }
+  };
 
 def aggregate_family($rows; $family; $denominator):
   [$rows[] | select(.record.family == $family)] as $selected
+  | {family: $family, denominator: $denominator}
+    + aggregate($selected)
+    + {categories:
+        ([$selected[].record.category] | unique
+         | map(. as $category
+           | [$selected[] | select(.record.category == $category)] as $category_rows
+           | {category: $category} + aggregate($category_rows)))};
+
+def layer($matched_rows; $layer):
+  [$matched_rows[] | {record, result: classify(.matches; $layer)}] as $rows
+  | [aggregate_family($rows; "unique"; true),
+     aggregate_family($rows; "set"; true),
+     aggregate_family($rows; "mixed"; false)] as $families
+  | [$rows[] | select(.record.family | IN("unique", "set"))] as $named
   | {
-      family: $family,
-      denominator: $denominator,
-      total: ($selected | length),
-      resolved: ([$selected[] | select(.result.status == "resolved")] | length),
-      ambiguous: ([$selected[] | select(.result.status == "ambiguous")] | length),
-      unmatched: ([$selected[] | select(.result.status == "unmatched")] | length),
-      distinct_resolved_canonical_ids:
-        ([$selected[] | select(.result.status == "resolved") | .result.canonical_id] | unique),
-      categories:
-        ([$selected[].record.category] | unique | map(aggregate_category($selected; .)))
+      layer: $layer,
+      families: $families,
+      named_page_denominator: ({families: ["unique", "set"]} + aggregate($named))
     };
 
 if ($catalog | length) != 1 or ($corpus | length) != 1 then
-  fail("exactly one catalog and one corpus are required")
-elif ($catalog[0].schema_version != 1)
-  or (($catalog[0].canonical_items | type) != "array")
+  fail("exactly one catalog and corpus required")
+elif ($catalog[0].catalog_version != 1)
+  or (($catalog[0].candidate_groups | type) != "object")
+  or any(["unique", "set", "mixed"][];
+      ($catalog[0].candidate_groups[.] | type) != "array")
+  or any($catalog[0].candidate_groups[][];
+      (.id | type) != "string"
+      or (.normalized_name | type) != "string"
+      or .normalized_name == ""
+      or (.source | IN("official", "opencc", "community") | not))
   or (($corpus[0].records | type) != "array") then
-  fail("invalid Schema v1 catalog or sanitized corpus")
-elif any($corpus[0].records[];
-    (.sample_id | type) != "string"
-    or (.family | IN("unique", "set", "mixed", "rune") | not)
-    or (.category | type) != "string"
-    or (.title | type) != "string") then
-  fail("invalid sanitized record")
+  fail("invalid inputs")
 else
   $catalog[0] as $cat
   | $corpus[0] as $data
-  | [
-      $data.records[]
-      | select(.family | IN("unique", "set", "mixed"))
-      | {record: ., result: resolve($cat; .)}
-    ] as $title_rows
-  | [
-      $data.records[]
-      | select(.family == "rune")
-      | . as $record
-      | ($record.rune_number | tonumber) as $number
-      | ("base:r" + (if $number < 10 then "0" else "" end) + ($number | tostring)) as $id
-      | if ($number < 1 or $number > 33)
-          or ([$cat.canonical_items[].id] | index($id) | not)
-        then fail("rune ask does not map to an exact base:r01-base:r33 catalog item")
-        else {record: $record, canonical_id: $id}
-        end
-    ] as $rune_rows
-  | [aggregate_family($title_rows; "unique"; true),
-     aggregate_family($title_rows; "set"; true),
-     aggregate_family($title_rows; "mixed"; false)] as $families
+  | [$data.records[]
+     | select(.family | IN("unique", "set", "mixed"))
+     | . as $record
+     | {record: $record, matches: match_candidates($cat.candidate_groups[$record.family]; $record)}] as $matched_rows
+  | [$data.records[]
+     | select(.family == "rune")
+     | . as $record
+     | ($record.rune_number | tonumber) as $number
+     | ("base:r" + (if $number < 10 then "0" else "" end) + ($number | tostring)) as $id
+     | if ($number < 1 or $number > 33) or ($cat.canonical_ids | index($id) | not)
+       then fail("invalid rune ask")
+       else {record: $record, canonical_id: $id}
+       end] as $rune_rows
   | {
-      report_version: 1,
+      report_version: 2,
       generated_at: $generated_at,
-      aliases_used: false,
       catalog: {
-        schema_version: $cat.schema_version,
-        product: $cat.build.product,
-        build_version: $cat.build.version,
-        canonical_item_count: ($cat.canonical_items | length),
+        schema_version: $cat.snapshot.schema_version,
+        product: $cat.snapshot.build.product,
+        build_version: $cat.snapshot.build.version,
+        canonical_item_count: $cat.snapshot.canonical_item_count,
         snapshot_sha256: $snapshot_sha256
+      },
+      variants: {
+        opencc_version: $cat.opencc.version,
+        opencc_config: $cat.opencc.config,
+        alias_map_version: $cat.alias_map.version,
+        alias_count: $cat.alias_map.count,
+        alias_sha256: $alias_sha256
       },
       sample: {
         captured_at: $captured_at,
@@ -118,27 +120,26 @@ else
         input_records: ($data.records | length),
         privacy_excluded: $data.privacy_excluded
       },
-      families: $families,
-      named_resolution_denominator: {
-        families: ["unique", "set"],
-        total: ([$families[] | select(.denominator) | .total] | add),
-        resolved: ([$families[] | select(.denominator) | .resolved] | add),
-        ambiguous: ([$families[] | select(.denominator) | .ambiguous] | add),
-        unmatched: ([$families[] | select(.denominator) | .unmatched] | add)
-      },
+      layers: [layer($matched_rows; "official"),
+               layer($matched_rows; "official_opencc"),
+               layer($matched_rows; "official_opencc_community")],
       rune_taxonomy:
         [$data.rune_taxonomy[]
          | (.number | tonumber) as $number
          | ("base:r" + (if $number < 10 then "0" else "" end) + ($number | tostring)) as $id
-         | if ($number < 1 or $number > 33)
-             or ([$cat.canonical_items[].id] | index($id) | not)
-           then fail("rune taxonomy does not map to an exact base:r01-base:r33 catalog item")
+         | if ($cat.canonical_ids | index($id) | not)
+           then fail("invalid rune taxonomy")
            else {number: $number, category: .category, canonical_id: $id, status: "resolved"}
            end],
       rune_asks:
-        ([$rune_rows[] | {category: .record.category, rune_number: (.record.rune_number | tonumber), canonical_id}]
+        ([$rune_rows[]
+          | {category: .record.category,
+             rune_number: (.record.rune_number | tonumber),
+             canonical_id}]
          | group_by([.rune_number, .category, .canonical_id])
-         | map({rune_number: .[0].rune_number, category: .[0].category,
-                canonical_id: .[0].canonical_id, current_ask_records: length}))
+         | map({rune_number: .[0].rune_number,
+                category: .[0].category,
+                canonical_id: .[0].canonical_id,
+                current_ask_records: length}))
     }
 end

@@ -1,1 +1,316 @@
-{"captured_at":"2026-08-22T07:07:21Z","game_label":"暗黑2：重制版国服","privacy_excluded":0,"raw_responses_retained":false,"realm_label":"国服","request_count":32,"request_interval_ms":1100,"server_label":"非赛季普通","sources":[{"bytes":50832,"content_type":"text/html; charset=utf-8","http_status":200,"purpose":"docs","sha256":"6473e792614b94ad8acefec33061aea75c305859dcf1f3388ad782dd9500dedb","started_at_ms":1787382405277,"url":"https://kf.dd373.com/helpdetail/dc862c7b70d74880968d2386e544b5bf.html"},{"bytes":59322,"content_type":"text/html; charset=utf-8","http_status":200,"purpose":"terms","sha256":"ab20a5be94278345736b68d895e82b1c7e4c27d92f5962f79f8cbdd728a225d0","started_at_ms":1787382406396,"url":"https://kf.dd373.com/helpdetail/78dba8ca31b44712aef8e923f6c61984.html"},{"bytes":26536,"content_type":"text/html; charset=utf-8","http_status":200,"purpose":"terms","sha256":"d56336d15733496fd1a0a3fd03c421e6f8b949f7b759cfa8196f5d7b810d4022","started_at_ms":1787382407515,"url":"https://about.dd373.com/Index.html?catenum=3732&childcatenum=37325"},{"bytes":290250,"content_type":"application/json; charset=utf-8","http_status":200,"purpose":"game","sha256":"9de743c73f9d23006026e69ea07440980ccad6c835aa93ec93f236377d7f6afc","started_at_ms":1787382408635,"url":"https://game.dd373.com/api/game/list"},{"bytes":9024,"content_type":"application/json; charset=utf-8","http_status":200,"purpose":"taxonomy","sha256":"5fe7cb30e6de1711e4a99c6ed25333bde2f41fea097adc5585d9d683233c0908","started_at_ms":1787382409749,"url":"https://game.dd373.com/Api/GameGoodsType/List?parentId=c97d2193c0a445b6a717acb6fdb17c16"},{"bytes":1275,"content_type":"application/json; charset=utf-8","http_status":200,"purpose":"taxonomy","sha256":"3e53dbb9fdff0ce5c6728040a4a1c0f45dda8effb24bdd99eb2871892a652ab4","started_at_ms":1787382410869,"url":"https://game.dd373.com/Api/GameOther/List?parentId=7b1751f92c844871ab80cae0822feea2"},{"bytes":10867,"content_type":"application/json; charset=utf-8","http_status":200,"purpose":"taxonomy","sha256":"af119e83b4221edfe80dd6165f7547192c3c5ccc7ab1632d1a8c76914f08210e","started_at_ms":1787382411988,"url":"https://game.dd373.com/Api/GameGoodsType/List?parentId=8405dd8baaa5498ab86ec2a7073282b4"},{"bytes":2993,"content_type":"application/json; charset=utf-8","http_status":200,"purpose":"taxonomy","sha256":"56e827fc43142b3a222ac0f9ee3501f71d2cb4bcba73910c17901ff33a439040","started_at_ms":1787382413105,"url":"https://game.dd373.com/Api/GameGoodsType/List?parentId=d8713381cd354aa3a1bea74e1fe23ebe"},{"bytes":3003,"content_type":"application/json; charset=utf-8","http_status":200,"purpose":"taxonomy","sha256":"d3f639b70f5a47a1abc75bf744b3f9cf1a34b3018413253a779b00779297d954","started_at_ms":1787382414225,"url":"https://game.dd373.com/Api/GameGoodsType/List?parentId=da3c2f7ca6194d08aa5cd9b49f232f84"},{"bytes":7517,"content_type":"application/json; charset=utf-8","http_status":200,"purpose":"listing","sha256":"35894305bb10b6c3f53036c835a21c8c3ff8cf57ae9e48b2e380e3a3425859ce","started_at_ms":1787382415345,"url":"https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=367dbf9f58a34c198fe28a11b148d0b8"},{"bytes":6741,"content_type":"application/json; charset=utf-8","http_status":200,"purpose":"listing","sha256":"32fd6bbc49a4a176fba420f894e4953592118205886ccb8ede83362d20019546","started_at_ms":1787382416460,"url":"https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=5825d0e2947a4b54b1811cb6db9f3aa1"},{"bytes":6393,"content_type":"application/json; charset=utf-8","http_status":200,"purpose":"listing","sha256":"ffd8f34126796362f5e23c585d45ff143fdd8eb1795c7cfe6beec30df88b9db7","started_at_ms":1787382417581,"url":"https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=92b75547264644c4aefc73a6ca372b57"},{"bytes":6605,"content_type":"application/json; charset=utf-8","http_status":200,"purpose":"listing","sha256":"73f3c3534ecd8af1d8fcd957867c28606d26efd17e7b2a3ecfdb097049547fb5","started_at_ms":1787382418701,"url":"https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=967130270aef44ee9e51d89641b14908"},{"bytes":6788,"content_type":"application/json; charset=utf-8","http_status":200,"purpose":"listing","sha256":"1f1d43639e67583e9c2885ccc2710c3c460a81af65e37447f784928c2de90b24","started_at_ms":1787382419821,"url":"https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=a2899a7761aa4f97ba785e37ac411db2"},{"bytes":6979,"content_type":"application/json; charset=utf-8","http_status":200,"purpose":"listing","sha256":"fff87d8af6f5c55e870f8578a87aa3d0eceb024f847f3c236a96225fe0644e46","started_at_ms":1787382420941,"url":"https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=aa610d6912e246c1af619c55a7fd7c01"},{"bytes":7150,"content_type":"application/json; charset=utf-8","http_status":200,"purpose":"listing","sha256":"8a351f5a02e62bc9db3b136018ba9697999b62ffc3c4f2d621d526ab24bff28d","started_at_ms":1787382422062,"url":"https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=adac92342d9a4efab52920bb0d09d8de"},{"bytes":6613,"content_type":"application/json; charset=utf-8","http_status":200,"purpose":"listing","sha256":"08d550b0fddb1b818364ad19cd77e2f0edb5e5841a023d1020027f7ed1bc4db9","started_at_ms":1787382423180,"url":"https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=c9c1a4f4617d4dd183ca36f832a823c3"},{"bytes":7150,"content_type":"application/json; charset=utf-8","http_status":200,"purpose":"listing","sha256":"e57c621a7e25891ef61f5cc82ed8f36281e85d2bcc16e64437011508809454c5","started_at_ms":1787382424300,"url":"https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=ef0ca66605cf466cacd893dd90b23860"},{"bytes":5156,"content_type":"application/json; charset=utf-8","http_status":200,"purpose":"listing","sha256":"16894303d9d3790e665091e668075897c8ce633f2e9168fd2f3eb09b2c422541","started_at_ms":1787382425417,"url":"https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=17403c2f36c44bf9a3ba0a61e50594f7"},{"bytes":6431,"content_type":"application/json; charset=utf-8","http_status":200,"purpose":"listing","sha256":"4e74bd6f33095d61ea83cea8032c29530b72d631e7c4a8e448ed67116c031563","started_at_ms":1787382426533,"url":"https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=1a192ae0a31347b28bfef07a48562830"},{"bytes":7773,"content_type":"application/json; charset=utf-8","http_status":200,"purpose":"listing","sha256":"8c94a7c24bd54ee8c125c944c4797c28cbf6311aed81436b9ddad984f6b349c9","started_at_ms":1787382427653,"url":"https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=5d3db22cd3b84b7f9f37b9ae185f12a4"},{"bytes":5882,"content_type":"application/json; charset=utf-8","http_status":200,"purpose":"listing","sha256":"d81dc4eaf755a27a83bdab2b977a7163a70685b6bcd6a1c604937272eeccb5be","started_at_ms":1787382428772,"url":"https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=9eece72b8c8644e8b8b2be01310f1662"},{"bytes":7999,"content_type":"application/json; charset=utf-8","http_status":200,"purpose":"listing","sha256":"804c1d052d24462683e144dee63762771ccc5dc39b0e8d9283e3a96809391fd5","started_at_ms":1787382429892,"url":"https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=af413b5249694873b1b8ae4af391d741"},{"bytes":7174,"content_type":"application/json; charset=utf-8","http_status":200,"purpose":"listing","sha256":"879a48c72819e02925498c2f1e8a58af14fc1cafd785e81ebb1cd66e844849af","started_at_ms":1787382431013,"url":"https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=b1bd53e287ec4e5ab2717631e6b80297"},{"bytes":7685,"content_type":"application/json; charset=utf-8","http_status":200,"purpose":"listing","sha256":"4d80e376b12e138bd6bacc7e368d74192c6aed3774c2803045700a7b44d3722c","started_at_ms":1787382432134,"url":"https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=b8eb54d8659c45c4a6f8064c244012de"},{"bytes":3283,"content_type":"application/json; charset=utf-8","http_status":200,"purpose":"listing","sha256":"a2a21a6a2e6f2f1c077fd65a1520421a11630be7e449a2cc17a9eb7b1da9e015","started_at_ms":1787382433255,"url":"https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=ce05e32bf4914d26a90566cd9cdbe33e"},{"bytes":456,"content_type":"application/json; charset=utf-8","http_status":200,"purpose":"listing","sha256":"4934f25d69b8f804ed249f5f3c280bce0da48a9eef9031f218524dd3f3c2d46a","started_at_ms":1787382434376,"url":"https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=f085e96d9ffa4c7da7f8d8aac4a3309d"},{"bytes":6110,"content_type":"application/json; charset=utf-8","http_status":200,"purpose":"listing","sha256":"412902e77d5413652ecba3be051451a1a1aa21ab06a85a65997df20acc308561","started_at_ms":1787382435496,"url":"https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=14cb41220924497ba561fac5b29aaf9c"},{"bytes":6388,"content_type":"application/json; charset=utf-8","http_status":200,"purpose":"listing","sha256":"84cbb5cd452541c94c74fc87cd3569f8b735eea1f8ad70177232a8bbb5c4bd45","started_at_ms":1787382436617,"url":"https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=833ffeca03da4acd8c90b63b7a72bef6"},{"bytes":608,"content_type":"application/json; charset=utf-8","http_status":200,"purpose":"listing","sha256":"bc8c25d7334452600bb58260581e6d2a3dae1623d3b01e8aa0b1456194e3b311","started_at_ms":1787382437735,"url":"https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=8dad0f46424544f08ce6d97ab7c3f6a2"},{"bytes":931,"content_type":"application/json; charset=utf-8","http_status":200,"purpose":"listing","sha256":"3e16aed1de2bc73077e34e1b81dd70a958f897ec8ecfd9284c54e06f725d5b56","started_at_ms":1787382438855,"url":"https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=a585b39a0a5c4c3ca39b20d4d219ca35"},{"bytes":1778,"content_type":"application/json; charset=utf-8","http_status":200,"purpose":"listing","sha256":"3bc69aed6b9b302459f40748f089ebbbf1cd1503978f18c2f4e8d2948653816d","started_at_ms":1787382439974,"url":"https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=db9bf3bb148541cbb3beaeeb3daa3284"}],"terms_review":"CONDITIONAL: no explicit prohibition found by narrow inspection; redistribution permission unresolved","user_agent":"Arreat-Index-Matching-Research/0.1"}
+{
+  "capture_context": {
+    "accepted_replacement_capture": true,
+    "prior_incomplete_capture": {
+      "included_in_corpus": false,
+      "retained_response_or_title_data": false,
+      "status": "timed_out"
+    },
+    "routing_diagnostics": {
+      "get_count": 2,
+      "included_in_corpus": false,
+      "purpose": "network routing diagnosis",
+      "retained_response_or_title_data": false
+    }
+  },
+  "captured_at": "2026-08-22T10:31:34Z",
+  "game_label": "暗黑2：重制版国服",
+  "privacy_excluded": 0,
+  "raw_responses_retained": false,
+  "realm_label": "国服",
+  "request_count": 32,
+  "request_interval_ms": 1100,
+  "server_label": "非赛季普通",
+  "sources": [
+    {
+      "bytes": 50832,
+      "content_type": "text/html; charset=utf-8",
+      "http_status": 200,
+      "purpose": "docs",
+      "sha256": "6473e792614b94ad8acefec33061aea75c305859dcf1f3388ad782dd9500dedb",
+      "started_at_ms": 1787394658163,
+      "url": "https://kf.dd373.com/helpdetail/dc862c7b70d74880968d2386e544b5bf.html"
+    },
+    {
+      "bytes": 59322,
+      "content_type": "text/html; charset=utf-8",
+      "http_status": 200,
+      "purpose": "terms",
+      "sha256": "ab20a5be94278345736b68d895e82b1c7e4c27d92f5962f79f8cbdd728a225d0",
+      "started_at_ms": 1787394659283,
+      "url": "https://kf.dd373.com/helpdetail/78dba8ca31b44712aef8e923f6c61984.html"
+    },
+    {
+      "bytes": 26536,
+      "content_type": "text/html; charset=utf-8",
+      "http_status": 200,
+      "purpose": "terms",
+      "sha256": "d56336d15733496fd1a0a3fd03c421e6f8b949f7b759cfa8196f5d7b810d4022",
+      "started_at_ms": 1787394660400,
+      "url": "https://about.dd373.com/Index.html?catenum=3732&childcatenum=37325"
+    },
+    {
+      "bytes": 290250,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "purpose": "game",
+      "sha256": "9de743c73f9d23006026e69ea07440980ccad6c835aa93ec93f236377d7f6afc",
+      "started_at_ms": 1787394661521,
+      "url": "https://game.dd373.com/api/game/list"
+    },
+    {
+      "bytes": 9024,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "purpose": "taxonomy",
+      "sha256": "5fe7cb30e6de1711e4a99c6ed25333bde2f41fea097adc5585d9d683233c0908",
+      "started_at_ms": 1787394662636,
+      "url": "https://game.dd373.com/Api/GameGoodsType/List?parentId=c97d2193c0a445b6a717acb6fdb17c16"
+    },
+    {
+      "bytes": 1275,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "purpose": "taxonomy",
+      "sha256": "3e53dbb9fdff0ce5c6728040a4a1c0f45dda8effb24bdd99eb2871892a652ab4",
+      "started_at_ms": 1787394663756,
+      "url": "https://game.dd373.com/Api/GameOther/List?parentId=7b1751f92c844871ab80cae0822feea2"
+    },
+    {
+      "bytes": 10867,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "purpose": "taxonomy",
+      "sha256": "af119e83b4221edfe80dd6165f7547192c3c5ccc7ab1632d1a8c76914f08210e",
+      "started_at_ms": 1787394664876,
+      "url": "https://game.dd373.com/Api/GameGoodsType/List?parentId=8405dd8baaa5498ab86ec2a7073282b4"
+    },
+    {
+      "bytes": 2993,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "purpose": "taxonomy",
+      "sha256": "56e827fc43142b3a222ac0f9ee3501f71d2cb4bcba73910c17901ff33a439040",
+      "started_at_ms": 1787394665995,
+      "url": "https://game.dd373.com/Api/GameGoodsType/List?parentId=d8713381cd354aa3a1bea74e1fe23ebe"
+    },
+    {
+      "bytes": 3003,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "purpose": "taxonomy",
+      "sha256": "d3f639b70f5a47a1abc75bf744b3f9cf1a34b3018413253a779b00779297d954",
+      "started_at_ms": 1787394667115,
+      "url": "https://game.dd373.com/Api/GameGoodsType/List?parentId=da3c2f7ca6194d08aa5cd9b49f232f84"
+    },
+    {
+      "bytes": 7577,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "purpose": "listing",
+      "sha256": "816a2624eb9ea1379167efd2fb6c2a2ceec6fbbf2b4a22fa4ddd754dde563b8d",
+      "started_at_ms": 1787394668235,
+      "url": "https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=367dbf9f58a34c198fe28a11b148d0b8"
+    },
+    {
+      "bytes": 6685,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "purpose": "listing",
+      "sha256": "6bdb0a5e65428ef4df81ed6e58ec4c51ed3f81bda618bf849c01a49b0775aba8",
+      "started_at_ms": 1787394669355,
+      "url": "https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=5825d0e2947a4b54b1811cb6db9f3aa1"
+    },
+    {
+      "bytes": 6328,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "purpose": "listing",
+      "sha256": "86ee76e37210ab2e1b51fee60924e4c8e3f90822a789660c673c5eb6cb7f4805",
+      "started_at_ms": 1787394670476,
+      "url": "https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=92b75547264644c4aefc73a6ca372b57"
+    },
+    {
+      "bytes": 6279,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "purpose": "listing",
+      "sha256": "997d4e021920be0b0fdac541816b4d5ad699de5a721947c09bbe5afd7ae0ad2b",
+      "started_at_ms": 1787394671597,
+      "url": "https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=967130270aef44ee9e51d89641b14908"
+    },
+    {
+      "bytes": 6644,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "purpose": "listing",
+      "sha256": "5fc1c3bd9a94a78fbd8d3ba703c9f6de62e99e312912bba8d7567b9f0a2edfe1",
+      "started_at_ms": 1787394672717,
+      "url": "https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=a2899a7761aa4f97ba785e37ac411db2"
+    },
+    {
+      "bytes": 6991,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "purpose": "listing",
+      "sha256": "8f7c4471e3a9fd9eae15b6983865b24981ca5ef19f707c7744cb85d39d07376a",
+      "started_at_ms": 1787394673837,
+      "url": "https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=aa610d6912e246c1af619c55a7fd7c01"
+    },
+    {
+      "bytes": 7150,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "purpose": "listing",
+      "sha256": "5ea04ba0ebe1468d7142f92f0da70702ead4ce19905f5e78125ca2a983265917",
+      "started_at_ms": 1787394674956,
+      "url": "https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=adac92342d9a4efab52920bb0d09d8de"
+    },
+    {
+      "bytes": 6245,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "purpose": "listing",
+      "sha256": "b49a8add400359078d0b0bac72a0fea7daafc84f3fc0760876cad803773193ff",
+      "started_at_ms": 1787394676076,
+      "url": "https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=c9c1a4f4617d4dd183ca36f832a823c3"
+    },
+    {
+      "bytes": 6947,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "purpose": "listing",
+      "sha256": "ca9b70359833305ababb3374d55f78312afc862eba565df8c773f63dfe0fd424",
+      "started_at_ms": 1787394677196,
+      "url": "https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=ef0ca66605cf466cacd893dd90b23860"
+    },
+    {
+      "bytes": 5156,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "purpose": "listing",
+      "sha256": "2a020892d53af0d49c6c110db8fccaccc299fe2185f400ae50c681930bbf707b",
+      "started_at_ms": 1787394678317,
+      "url": "https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=17403c2f36c44bf9a3ba0a61e50594f7"
+    },
+    {
+      "bytes": 6241,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "purpose": "listing",
+      "sha256": "049211f0cdeb67bc9c567ed7bc3239fa805658cdf74d14a017048a4323a72634",
+      "started_at_ms": 1787394679436,
+      "url": "https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=1a192ae0a31347b28bfef07a48562830"
+    },
+    {
+      "bytes": 7848,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "purpose": "listing",
+      "sha256": "29fb215aa2bf152a2fb9f59da6c0d0fd9e6215bf66cdeb4633ad1460fdba63d6",
+      "started_at_ms": 1787394680556,
+      "url": "https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=5d3db22cd3b84b7f9f37b9ae185f12a4"
+    },
+    {
+      "bytes": 5882,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "purpose": "listing",
+      "sha256": "c4a0f1e1f598f73f3ebece17570aaf683868e7a61129413c6093d2af35a593d4",
+      "started_at_ms": 1787394681676,
+      "url": "https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=9eece72b8c8644e8b8b2be01310f1662"
+    },
+    {
+      "bytes": 7999,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "purpose": "listing",
+      "sha256": "6311beace33d91d202a6e9a5e4a2662fb72bfa34834c30f62749cd492675a153",
+      "started_at_ms": 1787394682796,
+      "url": "https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=af413b5249694873b1b8ae4af391d741"
+    },
+    {
+      "bytes": 7101,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "purpose": "listing",
+      "sha256": "b1a2b87bf0556ec3bfc3264f1691b876706b9b40518d43656287de0d7a0582d0",
+      "started_at_ms": 1787394683917,
+      "url": "https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=b1bd53e287ec4e5ab2717631e6b80297"
+    },
+    {
+      "bytes": 7735,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "purpose": "listing",
+      "sha256": "f3c43a9c528f1975ac6202981bfe8605cf8a445cc5ce084fe7cdf33aa101bedb",
+      "started_at_ms": 1787394685037,
+      "url": "https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=b8eb54d8659c45c4a6f8064c244012de"
+    },
+    {
+      "bytes": 3283,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "purpose": "listing",
+      "sha256": "69e649268328ca580aae0fe00e33df9010fc938bb9f52fde11b58237f8981e64",
+      "started_at_ms": 1787394686158,
+      "url": "https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=ce05e32bf4914d26a90566cd9cdbe33e"
+    },
+    {
+      "bytes": 456,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "purpose": "listing",
+      "sha256": "4934f25d69b8f804ed249f5f3c280bce0da48a9eef9031f218524dd3f3c2d46a",
+      "started_at_ms": 1787394687278,
+      "url": "https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=f085e96d9ffa4c7da7f8d8aac4a3309d"
+    },
+    {
+      "bytes": 6072,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "purpose": "listing",
+      "sha256": "5edf8483bb262edc6e99f15232be7a0bd8db13f6c668bda00df9f4f845143ac0",
+      "started_at_ms": 1787394688397,
+      "url": "https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=14cb41220924497ba561fac5b29aaf9c"
+    },
+    {
+      "bytes": 6364,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "purpose": "listing",
+      "sha256": "4556c52c775c47e6174263bf5b653894dc3fcdb11c0c637d7032105cc6291830",
+      "started_at_ms": 1787394689518,
+      "url": "https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=833ffeca03da4acd8c90b63b7a72bef6"
+    },
+    {
+      "bytes": 608,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "purpose": "listing",
+      "sha256": "bc8c25d7334452600bb58260581e6d2a3dae1623d3b01e8aa0b1456194e3b311",
+      "started_at_ms": 1787394690637,
+      "url": "https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=8dad0f46424544f08ce6d97ab7c3f6a2"
+    },
+    {
+      "bytes": 1099,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "purpose": "listing",
+      "sha256": "0a40766cf20720245662f1cd3f0b08295ef8aa353a5e75219c4c2123877ffe69",
+      "started_at_ms": 1787394691758,
+      "url": "https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=a585b39a0a5c4c3ca39b20d4d219ca35"
+    },
+    {
+      "bytes": 1778,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "purpose": "listing",
+      "sha256": "3bc69aed6b9b302459f40748f089ebbbf1cd1503978f18c2f4e8d2948653816d",
+      "started_at_ms": 1787394692879,
+      "url": "https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_6770d6b2afb94cfcb2c67da5ba65bdbe&GameShopTypeId=db9bf3bb148541cbb3beaeeb3daa3284"
+    }
+  ],
+  "terms_review": "CONDITIONAL: no explicit prohibition found by narrow inspection; redistribution permission unresolved",
+  "user_agent": "Arreat-Index-Matching-Research/0.1"
+}

@@ -1,2 +1,9 @@
-index	code	namestr	enabled
-Ars Al'Diablolos	wa1	Ars Al'Diablolos	1
+index	code	namestr	enabled	complete	disabled	spawnable
+Ars Al'Diablolos	wa1	Ars Al'Diablolos	1	1	0	1
+Modern Valid Unique	wa2	Modern Valid Unique			0	1
+Blank Spawnable Unique	cm1	Blank Spawnable Unique			0	
+Legacy Disabled Unique	wa3	Legacy Disabled Unique	0	1	0	1
+Legacy Incomplete Unique	wa4	Legacy Incomplete Unique	1	0	0	1
+Modern Disabled Unique	wa5	Modern Disabled Unique			1	1
+Unspawnable Unique	wa6	Unspawnable Unique			0	0
+Rings		Rings			0	1

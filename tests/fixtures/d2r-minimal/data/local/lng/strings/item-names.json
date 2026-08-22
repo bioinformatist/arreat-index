@@ -1,4 +1,8 @@
 [
   {"Key":"old_book","enUS":"Old Book","zhTW":"舊書","zhCN":"古书"},
-  {"Key":"Ars Al'Diablolos","enUS":"Ars Al'Diabolos","zhTW":"艾迪亞布羅斯學術","zhCN":"迪亚波罗斯之术"}
+  {"Key":"Ars Al'Diablolos","enUS":"Ars Al'Diabolos","zhTW":"艾迪亞布羅斯學術","zhCN":"迪亚波罗斯之术"},
+  {"Key":"Modern Valid Unique","enUS":"Modern Valid Unique","zhTW":"Modern Valid Unique","zhCN":"Modern Valid Unique"},
+  {"Key":"Blank Spawnable Unique","enUS":"Blank Spawnable Unique","zhTW":"Blank Spawnable Unique","zhCN":"Blank Spawnable Unique"},
+  {"Key":"Modern Valid Set","enUS":"Modern Valid Set","zhTW":"Modern Valid Set","zhCN":"Modern Valid Set"},
+  {"Key":"Legacy Code Set","enUS":"Legacy Code Set","zhTW":"Legacy Code Set","zhCN":"Legacy Code Set"}
 ]

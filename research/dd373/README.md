@@ -92,28 +92,37 @@ permission is unresolved. The user must separately decide matching semantics,
 technical boundaries, data policy, history semantics, and initial item scope.
 This evidence pack makes none of those design choices.
 
-## Official-name matching snapshot (2026-08-22)
+## Layered name-matching snapshot (2026-08-22)
 
-**CONDITIONAL.** One dated capture made 32 unauthenticated, read-only HTTPS
-requests with starts at least one second apart. Every response was HTTP 200
-with the expected shape, and no login or challenge marker was observed. This
-does not establish future endpoint stability or redistribution permission.
+**CONDITIONAL.** The accepted replacement capture made 32 unauthenticated,
+read-only HTTPS requests, all HTTP 200, with starts at least 1115 ms apart. It
+produced 557 current-listing records, including 478 records from unique and set
+leaf pages. The preceding capture attempt timed out and was discarded. Two
+later GETs used only to diagnose network routing were also excluded from the
+corpus, with no response or title data retained. Neither the failed attempt nor
+the diagnostics are corpus evidence.
 
-The deterministic matcher used only official `enUS`, `zhTW`, and `zhCN`
-names from the accepted Schema v1 snapshot; aliases were disabled. Across the
-unique and set leaf pages, the named denominator contained 479 current listing
-records: 182 resolved to one canonical item, 3 were ambiguous, and 294 were
-unmatched. These are mechanical resolution counts for this capture, not
-labelled accuracy or completeness measurements.
+Plan 010 mechanically classified 479 unique/set page records as 182 resolved,
+3 ambiguous, and 294 unmatched using official names. The fresh capture uses a
+repaired 1,428-item D2R 3.3.93854 catalog and three cumulative layers over the
+same 478 records:
 
-The two mixed charm and jewel pages were discovery-only and excluded from that
-denominator; their 60 records produced 27 resolved, 0 ambiguous, and 33
-unmatched outcomes. The taxonomy contained exactly 33 numbered runes mapped to
-`base:r01` through `base:r33`. The sampled rune 1, 17, and 33 pages contained
-3, 5, and 10 current ask records respectively. Current asks are neither
-transactions nor historical observations.
+| layer | total | eligible | resolved | filtered multi-item | unmatched |
+|---|---:|---:|---:|---:|---:|
+| official | 478 | 468 | 160 | 10 | 308 |
+| official + OpenCC | 478 | 467 | 200 | 11 | 267 |
+| official + OpenCC + community map | 478 | 433 | 284 | 45 | 149 |
 
-Only aggregate matching output and per-request provenance are retained. Raw
-responses, listing titles, normalized titles, seller/account/contact details,
-prices, and the catalog corpus are absent from the evidence pack. The rights,
-stability, and current-asks limitations above remain unresolved.
+Unique pages remain restricted to unique items and set pages to set items.
+When a title matches more than one canonical ID, it is classified as filtered
+multi-item and removed from the eligible denominator; therefore eligible is
+`total - filtered multi-item`. OpenCC 1.3.0 uses `tw2s.json`, and the bounded
+community map contains 87 pre-approved aliases. The separate rune taxonomy
+still contains exactly 33 entries, and all 19 sampled rune asks mapped exactly.
+
+These are deterministic matching counts for current asks, not accuracy,
+precision, recall, completeness, transaction history, or production-feasibility
+claims. Endpoint stability and redistribution rights remain unresolved. Only
+aggregate results and request provenance are retained: no raw bodies, listing
+or normalized titles, source rows, seller/account/contact/price data, generated
+snapshot, full catalog, or private cache path is published.

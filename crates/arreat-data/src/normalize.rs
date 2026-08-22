@@ -136,7 +136,17 @@ fn normalize_bundle(bundle: InputBundle) -> Result<Snapshot> {
         ),
     ] {
         for row in parse_tsv(path, bundle.required(path)?)? {
-            if matches!(row.get(&["enabled", "complete"]), Some("0")) {
+            if row.get(&["enabled"]) == Some("0") || row.get(&["complete"]) == Some("0") {
+                continue;
+            }
+            if matches!(kind, ItemKind::Unique | ItemKind::SetItem)
+                && (row.get(&["disabled"]) == Some("1") || row.get(&["spawnable"]) == Some("0"))
+            {
+                continue;
+            }
+            if (kind == ItemKind::Unique && row.get(&["code"]).is_none())
+                || (kind == ItemKind::SetItem && row.get(&["item", "code"]).is_none())
+            {
                 continue;
             }
             let Some(source_key) = row.get(key_names) else {
@@ -1294,6 +1304,39 @@ mod tests {
         let fixture =
             Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/d2r-minimal");
         let snapshot = normalize_input(&fixture).expect("fixture normalizes");
+
+        let item_ids = snapshot
+            .canonical_items
+            .iter()
+            .map(|item| item.id.to_string())
+            .collect::<BTreeSet<_>>();
+        for expected in [
+            "unique:Ars Al'Diablolos",
+            "unique:Modern Valid Unique",
+            "unique:Blank Spawnable Unique",
+            "set-item:Modern Valid Set",
+            "set-item:Legacy Code Set",
+        ] {
+            assert!(
+                item_ids.contains(expected),
+                "missing admitted fixture {expected}"
+            );
+        }
+        for rejected in [
+            "unique:Legacy Disabled Unique",
+            "unique:Legacy Incomplete Unique",
+            "unique:Modern Disabled Unique",
+            "unique:Unspawnable Unique",
+            "unique:Rings",
+            "set-item:Disabled Set",
+            "set-item:Unspawnable Set",
+            "set-item:Expansion",
+        ] {
+            assert!(
+                !item_ids.contains(rejected),
+                "admitted rejected fixture {rejected}"
+            );
+        }
 
         let affix = |table, row_id| {
             snapshot

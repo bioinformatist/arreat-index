@@ -1,1 +1,6 @@
-index	code	namestr
+index	item	code	namestr	enabled	complete	disabled	spawnable
+Modern Valid Set	wa1		Modern Valid Set			0	1
+Legacy Code Set		wa2	Legacy Code Set	1	1	0	
+Disabled Set	wa3		Disabled Set			1	1
+Unspawnable Set	wa4		Unspawnable Set			0	0
+Expansion			Expansion			0	1

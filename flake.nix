@@ -51,6 +51,7 @@
           pkgs.git
           pkgs.curl
           pkgs.jq
+          pkgs.opencc
           pkgs.check-jsonschema
           pkgs.pkg-config
           pkgs.stdenv.cc
