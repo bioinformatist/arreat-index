@@ -91,3 +91,29 @@ is unverified, endpoint stability is only a dated observation, and redistributio
 permission is unresolved. The user must separately decide matching semantics,
 technical boundaries, data policy, history semantics, and initial item scope.
 This evidence pack makes none of those design choices.
+
+## Official-name matching snapshot (2026-08-22)
+
+**CONDITIONAL.** One dated capture made 32 unauthenticated, read-only HTTPS
+requests with starts at least one second apart. Every response was HTTP 200
+with the expected shape, and no login or challenge marker was observed. This
+does not establish future endpoint stability or redistribution permission.
+
+The deterministic matcher used only official `enUS`, `zhTW`, and `zhCN`
+names from the accepted Schema v1 snapshot; aliases were disabled. Across the
+unique and set leaf pages, the named denominator contained 479 current listing
+records: 182 resolved to one canonical item, 3 were ambiguous, and 294 were
+unmatched. These are mechanical resolution counts for this capture, not
+labelled accuracy or completeness measurements.
+
+The two mixed charm and jewel pages were discovery-only and excluded from that
+denominator; their 60 records produced 27 resolved, 0 ambiguous, and 33
+unmatched outcomes. The taxonomy contained exactly 33 numbered runes mapped to
+`base:r01` through `base:r33`. The sampled rune 1, 17, and 33 pages contained
+3, 5, and 10 current ask records respectively. Current asks are neither
+transactions nor historical observations.
+
+Only aggregate matching output and per-request provenance are retained. Raw
+responses, listing titles, normalized titles, seller/account/contact details,
+prices, and the catalog corpus are absent from the evidence pack. The rights,
+stability, and current-asks limitations above remain unresolved.
