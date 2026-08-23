@@ -1,0 +1,790 @@
+//! Privacy-preserving lookup of DD373 current seller asks.
+
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fs::File,
+    io::Read,
+    path::Path,
+    thread,
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
+
+use arreat_data::{CanonicalItemId, ItemKind};
+use regex::{Regex, RegexBuilder};
+use reqwest::{Url, blocking::Client, header::CONTENT_TYPE, redirect::Policy};
+use rust_decimal::Decimal;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use thiserror::Error;
+
+const GAME_LABEL: &str = "暗黑2：重制版国服";
+const REALM_ID: &str = "7b1751f92c844871ab80cae0822feea2";
+const USER_AGENT: &str = "Arreat-Index-Current-Asks/0.1";
+const CONNECT_TIMEOUT: Duration = Duration::from_secs(20);
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
+const REQUEST_INTERVAL_MS: u64 = 1_100;
+const MAX_REQUESTS: usize = 16;
+const MAX_BODY_BYTES: usize = 2 * 1024 * 1024;
+
+/// A successful, aggregate-only observation of current seller asks.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct CurrentAskSummary {
+    pub schema_version: u32,
+    pub item_id: CanonicalItemId,
+    pub status: CurrentAskStatus,
+    pub price_type: PriceType,
+    pub provider: Provider,
+    pub currency: Currency,
+    pub unit: Option<String>,
+    #[serde(with = "rust_decimal::serde::str_option")]
+    pub minimum_unit_ask: Option<Decimal>,
+    #[serde(with = "rust_decimal::serde::str_option")]
+    pub median_unit_ask: Option<Decimal>,
+    pub sample_count: usize,
+    pub listing_count: usize,
+    pub exclusions: ExclusionCounts,
+    pub request_count: usize,
+    pub observed_at: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CurrentAskStatus {
+    Resolved,
+    NoComparableCurrentAsks,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PriceType {
+    CurrentAsks,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Provider {
+    Dd373,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub enum Currency {
+    CNY,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+pub struct ExclusionCounts {
+    pub privacy: usize,
+    pub multi_item: usize,
+    pub unmatched_item: usize,
+    pub duplicate_listing: usize,
+    pub non_positive_amount: usize,
+}
+
+/// Bounded errors: no response bodies, listing titles, URLs, or seller details.
+#[derive(Debug, Error)]
+pub enum MarketError {
+    #[error("输入无效：{0}")]
+    InvalidInput(&'static str),
+    #[error("目录文件无效")]
+    InvalidCatalog,
+    #[error("网络连接失败（未重试）")]
+    Network,
+    #[error("网络请求超时（未重试）")]
+    Timeout,
+    #[error("上游返回 HTTP {0}（未重试）")]
+    Http(u16),
+    #[error("上游返回了访问验证或登录页面")]
+    Challenge,
+    #[error("上游响应类型无效")]
+    ContentType,
+    #[error("上游响应超过 2 MiB")]
+    BodyTooLarge,
+    #[error("上游 JSON 响应无效")]
+    InvalidJson,
+    #[error("上游分类结构不唯一")]
+    Taxonomy,
+    #[error("当前挂单价格字段无效")]
+    Price,
+    #[error("当前挂单单位为空或不一致")]
+    Unit,
+    #[error("单次查询超过 16 个请求")]
+    RequestLimit,
+}
+
+impl MarketError {
+    pub fn is_invalid_input(&self) -> bool {
+        matches!(self, Self::InvalidInput(_) | Self::InvalidCatalog)
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct Catalog {
+    catalog_version: u32,
+    canonical_ids: Vec<CanonicalItemId>,
+    candidate_groups: CandidateGroups,
+}
+
+#[derive(Debug, Deserialize)]
+struct CandidateGroups {
+    unique: Vec<Candidate>,
+    set: Vec<Candidate>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct Candidate {
+    id: CanonicalItemId,
+    normalized_name: String,
+    source: String,
+}
+
+impl Catalog {
+    fn read(path: &Path) -> Result<Self, MarketError> {
+        let file = File::open(path).map_err(|_| MarketError::InvalidCatalog)?;
+        let catalog: Self =
+            serde_json::from_reader(file).map_err(|_| MarketError::InvalidCatalog)?;
+        catalog.validate()?;
+        Ok(catalog)
+    }
+
+    fn validate(&self) -> Result<(), MarketError> {
+        if self.catalog_version != 1 || self.canonical_ids.is_empty() {
+            return Err(MarketError::InvalidCatalog);
+        }
+        let ids: BTreeSet<_> = self.canonical_ids.iter().collect();
+        if ids.len() != self.canonical_ids.len() {
+            return Err(MarketError::InvalidCatalog);
+        }
+        for (kind, candidates) in [
+            (ItemKind::Unique, &self.candidate_groups.unique),
+            (ItemKind::SetItem, &self.candidate_groups.set),
+        ] {
+            for candidate in candidates {
+                if candidate.id.kind != kind
+                    || !ids.contains(&candidate.id)
+                    || candidate.normalized_name.is_empty()
+                    || !matches!(
+                        candidate.source.as_str(),
+                        "official" | "opencc" | "community"
+                    )
+                    || normalize_name(&candidate.normalized_name) != candidate.normalized_name
+                {
+                    return Err(MarketError::InvalidCatalog);
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+/// Concrete DD373 implementation. It deliberately exposes no provider trait.
+pub struct Dd373CurrentAskLookup {
+    catalog: Catalog,
+    client: Client,
+}
+
+impl Dd373CurrentAskLookup {
+    pub fn from_catalog_path(path: impl AsRef<Path>) -> Result<Self, MarketError> {
+        let catalog = Catalog::read(path.as_ref())?;
+        let client = build_client()?;
+        Ok(Self { catalog, client })
+    }
+
+    pub fn lookup(&self, item: &CanonicalItemId) -> Result<CurrentAskSummary, MarketError> {
+        let family = self.admit(item)?;
+        let mut transport = ReqwestTransport {
+            client: &self.client,
+        };
+        let mut clock = SystemClock;
+        lookup_with(&self.catalog, item, family, &mut transport, &mut clock)
+    }
+
+    fn admit(&self, item: &CanonicalItemId) -> Result<Family, MarketError> {
+        match item.kind {
+            ItemKind::Base if rune_number(item).is_some() => Ok(Family::Rune),
+            ItemKind::Unique | ItemKind::SetItem => {
+                let candidates = match item.kind {
+                    ItemKind::Unique => &self.catalog.candidate_groups.unique,
+                    ItemKind::SetItem => &self.catalog.candidate_groups.set,
+                    _ => unreachable!(),
+                };
+                if self.catalog.canonical_ids.contains(item)
+                    && candidates.iter().any(|c| c.id == *item)
+                {
+                    Ok(if item.kind == ItemKind::Unique {
+                        Family::Unique
+                    } else {
+                        Family::Set
+                    })
+                } else {
+                    Err(MarketError::InvalidInput(
+                        "目录中没有可唯一匹配的暗金或套装物品",
+                    ))
+                }
+            }
+            _ => Err(MarketError::InvalidInput(
+                "仅支持 1 至 33 号符文及目录中的暗金或套装物品",
+            )),
+        }
+    }
+}
+
+fn build_client() -> Result<Client, MarketError> {
+    Client::builder()
+        .user_agent(USER_AGENT)
+        .connect_timeout(CONNECT_TIMEOUT)
+        .timeout(REQUEST_TIMEOUT)
+        .redirect(Policy::none())
+        .retry(reqwest::retry::never())
+        .build()
+        .map_err(|_| MarketError::Network)
+}
+
+#[derive(Clone, Copy)]
+enum Family {
+    Rune,
+    Unique,
+    Set,
+}
+
+fn rune_number(item: &CanonicalItemId) -> Option<u8> {
+    let digits = item.source_key.strip_prefix('r')?;
+    if digits.len() != 2 {
+        return None;
+    }
+    let number = digits.parse().ok()?;
+    (1..=33).contains(&number).then_some(number)
+}
+
+struct RawResponse {
+    status: u16,
+    content_type: String,
+    body: Vec<u8>,
+}
+
+trait Transport {
+    fn get(&mut self, url: &str) -> Result<RawResponse, MarketError>;
+}
+trait Clock {
+    fn now_millis(&mut self) -> u64;
+    fn sleep(&mut self, duration: Duration);
+}
+
+struct ReqwestTransport<'a> {
+    client: &'a Client,
+}
+impl Transport for ReqwestTransport<'_> {
+    fn get(&mut self, url: &str) -> Result<RawResponse, MarketError> {
+        if !is_allowed_dd373_url(url) {
+            return Err(MarketError::Network);
+        }
+        let mut response = self.client.get(url).send().map_err(|error| {
+            if error.is_timeout() {
+                MarketError::Timeout
+            } else {
+                MarketError::Network
+            }
+        })?;
+        let status = response.status().as_u16();
+        let content_type = response
+            .headers()
+            .get(CONTENT_TYPE)
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("")
+            .to_owned();
+        let body = read_bounded(&mut response)?;
+        Ok(RawResponse {
+            status,
+            content_type,
+            body,
+        })
+    }
+}
+
+fn is_allowed_dd373_url(value: &str) -> bool {
+    let Ok(url) = Url::parse(value) else {
+        return false;
+    };
+    url.scheme() == "https"
+        && matches!(url.host_str(), Some("game.dd373.com" | "goods.dd373.com"))
+        && url.port().is_none()
+        && url.username().is_empty()
+        && url.password().is_none()
+}
+
+fn read_bounded(reader: &mut impl Read) -> Result<Vec<u8>, MarketError> {
+    let mut body = Vec::new();
+    reader
+        .take((MAX_BODY_BYTES + 1) as u64)
+        .read_to_end(&mut body)
+        .map_err(|_| MarketError::Network)?;
+    if body.len() > MAX_BODY_BYTES {
+        Err(MarketError::BodyTooLarge)
+    } else {
+        Ok(body)
+    }
+}
+
+fn is_json_content_type(value: &str) -> bool {
+    value
+        .split_once(';')
+        .map_or(value, |(media_type, _)| media_type)
+        .trim()
+        .eq_ignore_ascii_case("application/json")
+}
+
+struct SystemClock;
+impl Clock for SystemClock {
+    fn now_millis(&mut self) -> u64 {
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis() as u64
+    }
+    fn sleep(&mut self, duration: Duration) {
+        thread::sleep(duration);
+    }
+}
+
+struct Session<'a> {
+    transport: &'a mut dyn Transport,
+    clock: &'a mut dyn Clock,
+    requests: usize,
+    last_start: Option<u64>,
+}
+
+impl Session<'_> {
+    fn json(&mut self, url: &str) -> Result<Value, MarketError> {
+        if self.requests == MAX_REQUESTS {
+            return Err(MarketError::RequestLimit);
+        }
+        let now = self.clock.now_millis();
+        if let Some(last) = self.last_start {
+            let elapsed = now.saturating_sub(last);
+            if elapsed < REQUEST_INTERVAL_MS {
+                self.clock
+                    .sleep(Duration::from_millis(REQUEST_INTERVAL_MS - elapsed));
+            }
+        }
+        self.last_start = Some(self.clock.now_millis());
+        self.requests += 1;
+        let response = self.transport.get(url)?;
+        if response.status != 200 {
+            return Err(MarketError::Http(response.status));
+        }
+        if !is_json_content_type(&response.content_type) {
+            return Err(MarketError::ContentType);
+        }
+        if response.body.is_empty() {
+            return Err(MarketError::InvalidJson);
+        }
+        let sample = String::from_utf8_lossy(&response.body).to_ascii_lowercase();
+        if [
+            "captcha",
+            "访问验证",
+            "安全验证",
+            "请登录",
+            "browser challenge",
+            "cloudflare ray",
+        ]
+        .iter()
+        .any(|m| sample.contains(m))
+        {
+            return Err(MarketError::Challenge);
+        }
+        serde_json::from_slice(&response.body).map_err(|_| MarketError::InvalidJson)
+    }
+}
+
+fn lookup_with(
+    catalog: &Catalog,
+    item: &CanonicalItemId,
+    family: Family,
+    transport: &mut dyn Transport,
+    clock: &mut dyn Clock,
+) -> Result<CurrentAskSummary, MarketError> {
+    let mut session = Session {
+        transport,
+        clock,
+        requests: 0,
+        last_start: None,
+    };
+    let game = session.json("https://game.dd373.com/api/game/list")?;
+    let game_id = exact_id(&game, GAME_LABEL)?;
+    validate_game(&game, &game_id)?;
+    let roots = session.json(&format!(
+        "https://game.dd373.com/Api/GameGoodsType/List?parentId={game_id}"
+    ))?;
+    let realm = session.json(&format!(
+        "https://game.dd373.com/Api/GameOther/List?parentId={REALM_ID}"
+    ))?;
+    let server_id = ordinary_server_id(&realm)?;
+    let realm_path = format!("{REALM_ID}_{server_id}");
+    let root_label = match family {
+        Family::Rune => "符文",
+        Family::Unique => "暗金装备&饰品",
+        Family::Set => "套装",
+    };
+    let root_id = exact_id(&roots, root_label)?;
+    let children = session.json(&format!(
+        "https://game.dd373.com/Api/GameGoodsType/List?parentId={root_id}"
+    ))?;
+    let leaves = leaves_for(&children, family, item)?;
+    let candidates: &[Candidate] = match family {
+        Family::Unique => &catalog.candidate_groups.unique,
+        Family::Set => &catalog.candidate_groups.set,
+        Family::Rune => &[],
+    };
+    let mut records = Vec::new();
+    for leaf in leaves {
+        let page = session.json(&format!("https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid={game_id}&GameOtherId={realm_path}&GameShopTypeId={leaf}"))?;
+        records.extend(listing_records(&page)?);
+    }
+    summarize(
+        item,
+        family,
+        candidates,
+        records,
+        session.requests,
+        session.clock.now_millis(),
+    )
+}
+
+fn objects_with_names<'a>(value: &'a Value, out: &mut Vec<(String, String, &'a Value)>) {
+    match value {
+        Value::Object(map) => {
+            let name = map
+                .get("Name")
+                .or_else(|| map.get("name"))
+                .and_then(Value::as_str);
+            let id = map
+                .get("Id")
+                .or_else(|| map.get("id"))
+                .and_then(Value::as_str);
+            if let (Some(name), Some(id)) = (name, id) {
+                out.push((name.to_owned(), id.to_owned(), value));
+            }
+            for child in map.values() {
+                objects_with_names(child, out);
+            }
+        }
+        Value::Array(values) => {
+            for child in values {
+                objects_with_names(child, out);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn exact_id(value: &Value, label: &str) -> Result<String, MarketError> {
+    let mut objects = Vec::new();
+    objects_with_names(value, &mut objects);
+    let ids: BTreeSet<_> = objects
+        .into_iter()
+        .filter(|(name, _, _)| name == label)
+        .map(|(_, id, _)| id)
+        .collect();
+    if ids.len() == 1 {
+        Ok(ids.into_iter().next().unwrap())
+    } else {
+        Err(MarketError::Taxonomy)
+    }
+}
+
+fn validate_game(value: &Value, id: &str) -> Result<(), MarketError> {
+    let mut objects = Vec::new();
+    objects_with_names(value, &mut objects);
+    let rows: Vec<_> = objects
+        .into_iter()
+        .filter(|(name, row_id, _)| name == GAME_LABEL && row_id == id)
+        .collect();
+    if rows.len() != 1 {
+        return Err(MarketError::Taxonomy);
+    }
+    let map = rows[0].2.as_object().ok_or(MarketError::Taxonomy)?;
+    let false_or_missing =
+        |a: &str, b: &str| map.get(a).or_else(|| map.get(b)).and_then(Value::as_bool) != Some(true);
+    let true_or_missing = |a: &str, b: &str| {
+        map.get(a).or_else(|| map.get(b)).and_then(Value::as_bool) != Some(false)
+    };
+    if false_or_missing("IsClose", "isClose")
+        && true_or_missing("CanTrade", "canTrade")
+        && true_or_missing("IsEnabled", "isEnabled")
+    {
+        Ok(())
+    } else {
+        Err(MarketError::Taxonomy)
+    }
+}
+
+fn ordinary_server_id(value: &Value) -> Result<String, MarketError> {
+    let mut objects = Vec::new();
+    objects_with_names(value, &mut objects);
+    let ids: BTreeSet<_> = objects
+        .into_iter()
+        .filter(|(name, _, _)| {
+            name.contains("非赛季") && name.contains("普通") && !name.contains("专家")
+        })
+        .map(|(_, id, _)| id)
+        .collect();
+    if ids.len() == 1 {
+        Ok(ids.into_iter().next().unwrap())
+    } else {
+        Err(MarketError::Taxonomy)
+    }
+}
+
+fn leaves_for(
+    value: &Value,
+    family: Family,
+    item: &CanonicalItemId,
+) -> Result<Vec<String>, MarketError> {
+    let mut objects = Vec::new();
+    objects_with_names(value, &mut objects);
+    let pairs: BTreeSet<_> = objects
+        .into_iter()
+        .map(|(name, id, _)| (name, id))
+        .collect();
+    match family {
+        Family::Rune => {
+            let regex = Regex::new(r"^([0-9]+)号符文$").unwrap();
+            let mut by_number = BTreeMap::new();
+            for (name, id) in pairs {
+                if let Some(caps) = regex.captures(&name) {
+                    let number: u8 = caps[1].parse().map_err(|_| MarketError::Taxonomy)?;
+                    if by_number.insert(number, id).is_some() {
+                        return Err(MarketError::Taxonomy);
+                    }
+                }
+            }
+            if by_number.len() != 33 || !(1..=33).all(|n| by_number.contains_key(&n)) {
+                return Err(MarketError::Taxonomy);
+            }
+            Ok(vec![by_number.remove(&rune_number(item).unwrap()).unwrap()])
+        }
+        Family::Unique | Family::Set => {
+            if pairs.len() != 9
+                || (matches!(family, Family::Set) && !pairs.iter().any(|(name, _)| name == "术士"))
+            {
+                return Err(MarketError::Taxonomy);
+            }
+            let ids: BTreeSet<_> = pairs.into_iter().map(|(_, id)| id).collect();
+            if ids.len() != 9 || ids.iter().any(String::is_empty) {
+                return Err(MarketError::Taxonomy);
+            }
+            Ok(ids.into_iter().collect())
+        }
+    }
+}
+
+fn listing_records(value: &Value) -> Result<Vec<Value>, MarketError> {
+    if let Some(code) = value.get("StatusCode")
+        && !is_zero(code)
+    {
+        return Err(MarketError::InvalidJson);
+    }
+    let status = value
+        .get("StatusData")
+        .and_then(Value::as_object)
+        .ok_or(MarketError::InvalidJson)?;
+    if let Some(code) = status.get("ResultCode")
+        && !is_zero(code)
+    {
+        return Err(MarketError::InvalidJson);
+    }
+    status
+        .get("ResultData")
+        .and_then(Value::as_array)
+        .cloned()
+        .ok_or(MarketError::InvalidJson)
+}
+
+fn is_zero(value: &Value) -> bool {
+    value.as_i64() == Some(0) || value.as_str() == Some("0")
+}
+
+fn summarize(
+    item: &CanonicalItemId,
+    family: Family,
+    candidates: &[Candidate],
+    records: Vec<Value>,
+    request_count: usize,
+    observed_ms: u64,
+) -> Result<CurrentAskSummary, MarketError> {
+    let privacy = privacy_regexes();
+    let mut exclusions = ExclusionCounts::default();
+    let mut seen = BTreeSet::new();
+    let mut asks = Vec::new();
+    let mut listing_count = 0;
+    let mut unit: Option<String> = None;
+    for record in records {
+        let object = record.as_object().ok_or(MarketError::InvalidJson)?;
+        let title = object
+            .get("title")
+            .and_then(Value::as_str)
+            .ok_or(MarketError::InvalidJson)?;
+        if privacy.iter().any(|regex| regex.is_match(title)) {
+            exclusions.privacy += 1;
+            continue;
+        }
+        if !matches!(family, Family::Rune) {
+            let normalized = normalize_name(title);
+            let ids: BTreeSet<_> = candidates
+                .iter()
+                .filter(|candidate| normalized.contains(&candidate.normalized_name))
+                .map(|candidate| &candidate.id)
+                .collect();
+            if ids.len() > 1 {
+                exclusions.multi_item += 1;
+                continue;
+            }
+            if ids.len() != 1 || !ids.contains(item) {
+                exclusions.unmatched_item += 1;
+                continue;
+            }
+        }
+        let shopno = object
+            .get("shopno")
+            .and_then(|v| match v {
+                Value::String(s) => Some(s.clone()),
+                Value::Number(n) => Some(n.to_string()),
+                _ => None,
+            })
+            .filter(|s| !s.is_empty())
+            .ok_or(MarketError::InvalidJson)?;
+        if !seen.insert(shopno) {
+            exclusions.duplicate_listing += 1;
+            continue;
+        }
+        listing_count += 1;
+        let amount = parse_decimal(object.get("singleprice").ok_or(MarketError::Price)?)?;
+        if amount <= Decimal::ZERO {
+            exclusions.non_positive_amount += 1;
+            continue;
+        }
+        let current_unit = object
+            .get("unit")
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .ok_or(MarketError::Unit)?;
+        if let Some(expected) = &unit {
+            if expected != current_unit {
+                return Err(MarketError::Unit);
+            }
+        } else {
+            unit = Some(current_unit.to_owned());
+        }
+        asks.push(amount);
+    }
+    asks.sort();
+    let sample_count = asks.len();
+    let (status, minimum, median, unit) = if asks.is_empty() {
+        (CurrentAskStatus::NoComparableCurrentAsks, None, None, None)
+    } else {
+        let middle = asks.len() / 2;
+        let median = if asks.len() % 2 == 1 {
+            asks[middle]
+        } else {
+            (asks[middle - 1] + asks[middle]) / Decimal::from(2)
+        };
+        (
+            CurrentAskStatus::Resolved,
+            Some(asks[0]),
+            Some(median),
+            unit,
+        )
+    };
+    Ok(CurrentAskSummary {
+        schema_version: 1,
+        item_id: item.clone(),
+        status,
+        price_type: PriceType::CurrentAsks,
+        provider: Provider::Dd373,
+        currency: Currency::CNY,
+        unit,
+        minimum_unit_ask: minimum,
+        median_unit_ask: median,
+        sample_count,
+        listing_count,
+        exclusions,
+        request_count,
+        observed_at: rfc3339(observed_ms / 1000),
+    })
+}
+
+fn parse_decimal(value: &Value) -> Result<Decimal, MarketError> {
+    match value {
+        Value::String(text) => Decimal::from_str_exact(text).map_err(|_| MarketError::Price),
+        Value::Number(number) => {
+            Decimal::from_str_exact(&number.to_string()).map_err(|_| MarketError::Price)
+        }
+        _ => Err(MarketError::Price),
+    }
+}
+
+fn normalize_name(value: &str) -> String {
+    let mut text = String::with_capacity(value.len());
+    for character in value.chars() {
+        let mapped = match character {
+            '０' => '0',
+            '１' => '1',
+            '２' => '2',
+            '３' => '3',
+            '４' => '4',
+            '５' => '5',
+            '６' => '6',
+            '７' => '7',
+            '８' => '8',
+            '９' => '9',
+            other => other,
+        };
+        text.push(mapped);
+    }
+    let lower = text.to_ascii_lowercase();
+    Regex::new(r"[\p{P}\s]")
+        .unwrap()
+        .replace_all(&lower, "")
+        .into_owned()
+}
+
+fn privacy_regexes() -> Vec<Regex> {
+    [
+        r"[[:alnum:]._%+-]+@[[:alnum:].-]+\.[[:alpha:]]{2,}",
+        r"https?://|www\.",
+        r"[0-9０-９]{5,}",
+        r"qq|微信|vx|v信|telegram|discord|手机号|电话",
+    ]
+    .iter()
+    .map(|pattern| {
+        RegexBuilder::new(pattern)
+            .case_insensitive(true)
+            .build()
+            .unwrap()
+    })
+    .collect()
+}
+
+fn rfc3339(seconds: u64) -> String {
+    let days = (seconds / 86_400) as i64;
+    let day_seconds = seconds % 86_400;
+    let z = days + 719_468;
+    let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
+    let mut year = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = doy - (153 * mp + 2) / 5 + 1;
+    let month = mp + if mp < 10 { 3 } else { -9 };
+    year += i64::from(month <= 2);
+    format!(
+        "{year:04}-{month:02}-{day:02}T{:02}:{:02}:{:02}Z",
+        day_seconds / 3600,
+        day_seconds / 60 % 60,
+        day_seconds % 60
+    )
+}
+
+#[cfg(test)]
+mod tests;

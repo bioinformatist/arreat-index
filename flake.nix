@@ -23,7 +23,7 @@
       rustPlatform = pkgs.makeRustPlatform { cargo = rustToolchain; rustc = rustToolchain; };
       workspaceCargoDeps = rustPlatform.fetchCargoVendor {
         src = self;
-        hash = "sha256-h2H8nnYQyiEwqxXtrAlT6UhvKG1oVYlUKBIJ0bPGVrc=";
+        hash = "sha256-OrBQiDfNAmNWgN/Fqa/qzRgMZxRGcPGoVcUHalOlGvQ=";
       };
       cascLib = pkgs.stdenv.mkDerivation {
         pname = "casclib";
@@ -58,10 +58,12 @@
           cascLib
           pkgs.zlib
           pkgs.zlib.static
+          pkgs.cacert
         ];
         CASCLIB_LIB_DIR = "${cascLib}/lib";
         ZLIB_STATIC_LIB_DIR = "${pkgs.zlib.static}/lib";
         LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib ];
+        SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
       };
 
       checks.${system}.workspace = pkgs.stdenv.mkDerivation {
@@ -69,10 +71,12 @@
         version = "0.1.0";
         src = self;
         nativeBuildInputs = [ rustToolchain rustPlatform.cargoSetupHook ];
-        buildInputs = [ cascLib pkgs.zlib pkgs.zlib.static ];
+        buildInputs = [ cascLib pkgs.zlib pkgs.zlib.static pkgs.stdenv.cc.cc.lib pkgs.cacert ];
         cargoDeps = workspaceCargoDeps;
         CASCLIB_LIB_DIR = "${cascLib}/lib";
         ZLIB_STATIC_LIB_DIR = "${pkgs.zlib.static}/lib";
+        LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib ];
+        SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
         buildPhase = ''
           runHook preBuild
           export HOME="$TMPDIR"

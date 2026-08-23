@@ -1,0 +1,26 @@
+[
+  [{"Name":"暗黑2：重制版国服","Id":"game","IsClose":false,"CanTrade":true,"IsEnabled":true}],
+  [{"Name":"符文","Id":"runes"},{"Name":"暗金装备&饰品","Id":"unique"},{"Name":"套装","Id":"set"}],
+  [{"Name":"非赛季 普通 扩展","Id":"server"},{"Name":"非赛季 专家 扩展","Id":"hardcore"}],
+  [
+    {"Name":"1号符文","Id":"r01"},{"Name":"2号符文","Id":"r02"},{"Name":"3号符文","Id":"r03"},
+    {"Name":"4号符文","Id":"r04"},{"Name":"5号符文","Id":"r05"},{"Name":"6号符文","Id":"r06"},
+    {"Name":"7号符文","Id":"r07"},{"Name":"8号符文","Id":"r08"},{"Name":"9号符文","Id":"r09"},
+    {"Name":"10号符文","Id":"r10"},{"Name":"11号符文","Id":"r11"},{"Name":"12号符文","Id":"r12"},
+    {"Name":"13号符文","Id":"r13"},{"Name":"14号符文","Id":"r14"},{"Name":"15号符文","Id":"r15"},
+    {"Name":"16号符文","Id":"r16"},{"Name":"17号符文","Id":"r17"},{"Name":"18号符文","Id":"r18"},
+    {"Name":"19号符文","Id":"r19"},{"Name":"20号符文","Id":"r20"},{"Name":"21号符文","Id":"r21"},
+    {"Name":"22号符文","Id":"r22"},{"Name":"23号符文","Id":"r23"},{"Name":"24号符文","Id":"r24"},
+    {"Name":"25号符文","Id":"r25"},{"Name":"26号符文","Id":"r26"},{"Name":"27号符文","Id":"r27"},
+    {"Name":"28号符文","Id":"r28"},{"Name":"29号符文","Id":"r29"},{"Name":"30号符文","Id":"r30"},
+    {"Name":"31号符文","Id":"r31"},{"Name":"32号符文","Id":"r32"},{"Name":"33号符文","Id":"r33"}
+  ],
+  {"StatusCode":"0","StatusData":{"ResultCode":0,"ResultData":[
+    {"shopno":"one","title":"17号符文","singleprice":"1.20","unit":"元/个"},
+    {"shopno":"two","title":"17号符文","singleprice":3,"unit":"元/个"},
+    {"shopno":"three","title":"17号符文","singleprice":"5.40","unit":"元/个"},
+    {"shopno":"three","title":"重复","singleprice":"999","unit":"元/个"},
+    {"shopno":"private","title":"联系QQ123456","singleprice":"0.01","unit":"元/个"},
+    {"shopno":"zero","title":"17号符文","singleprice":"0","unit":"元/个"}
+  ]}}
+]

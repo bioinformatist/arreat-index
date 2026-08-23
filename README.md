@@ -19,6 +19,20 @@ cargo run -p arreat-data -- --help
 1.97.1；完整的本地门禁是 `nix flake check`。
 无需安装 D2R 的夹具流程见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
+## 实验性当前挂单查询
+
+先用现有构建器临时生成名称目录（目录不应提交），再查询一个物品：
+
+```console
+research/dd373/build-name-catalog.sh SNAPSHOT research/dd373/name-aliases.json .cache/name-catalog.json
+cargo run -q -p arreat-app -- market lookup --catalog .cache/name-catalog.json --item base:r17
+```
+
+当前仅支持 `base:r01` 至 `base:r33`，以及目录中能唯一解析的暗金和套装物品。
+不支持符文之语、普通底材、孔数、随机词缀、自由词缀匹配或捆绑物品。JSON 只汇总
+同一观察时刻的活跃卖家当前挂单；它不是成交价、历史、市场价值、公允价格或购买建议。
+模块不输出或保存标题、卖家、联系方式和原始响应。
+
 进一步阅读：
 
 - [架构边界](docs/architecture.md)

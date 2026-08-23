@@ -1,0 +1,15 @@
+{
+  "catalog_version": 1,
+  "canonical_ids": ["unique:alpha-crown", "unique:red-moon", "set-item:jade-band", "base:r17"],
+  "candidate_groups": {
+    "unique": [
+      {"id":"unique:alpha-crown","normalized_name":"alphacrown","source":"official"},
+      {"id":"unique:alpha-crown","normalized_name":"阿尔法王冠","source":"opencc"},
+      {"id":"unique:alpha-crown","normalized_name":"皇冠别名","source":"community"},
+      {"id":"unique:red-moon","normalized_name":"redmoon","source":"official"}
+    ],
+    "set": [
+      {"id":"set-item:jade-band","normalized_name":"jadeband","source":"official"}
+    ]
+  }
+}

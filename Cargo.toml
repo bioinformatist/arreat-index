@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/arreat-core", "crates/arreat-app", "crates/arreat-data"]
+members = ["crates/arreat-core", "crates/arreat-app", "crates/arreat-data", "crates/arreat-market"]
 resolver = "3"
 
 [workspace.package]
@@ -11,7 +11,10 @@ rust-version = "1.97.1"
 clap = { version = "4.5.46", features = ["derive"] }
 csv = "1.3.1"
 serde = { version = "1.0.219", features = ["derive"] }
-serde_json = "1.0.143"
+serde_json = { version = "1.0.143", features = ["arbitrary_precision"] }
+regex = "1.11.2"
+reqwest = { version = "0.13", default-features = false, features = ["blocking", "json", "rustls"] }
+rust_decimal = { version = "1.37.2", features = ["serde-with-str"] }
 sha2 = "0.10.9"
 tar = "0.4.44"
 thiserror = "2.0.16"

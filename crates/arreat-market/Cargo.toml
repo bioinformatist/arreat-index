@@ -1,15 +1,14 @@
 [package]
-name = "arreat-app"
+name = "arreat-market"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 
-[[bin]]
-name = "arreat-app"
-path = "src/main.rs"
-
 [dependencies]
-arreat-core = { path = "../arreat-core" }
 arreat-data = { path = "../arreat-data" }
-arreat-market = { path = "../arreat-market" }
+regex.workspace = true
+reqwest.workspace = true
+rust_decimal.workspace = true
+serde.workspace = true
 serde_json.workspace = true
+thiserror.workspace = true

@@ -37,3 +37,12 @@ _Avoid_: Invalid modifier
 
 **Evidence Sentinel**:
 A named fixture or product evidence assertion reported by audit but not itself a universal data-integrity invariant.
+
+**Current Ask**:
+An active seller listing amount observed at one time. It is not a transaction, history, valuation, or recommendation.
+
+**Comparable Current Ask**:
+A non-private, single-canonical-item listing with a positive exact per-unit amount and one consistent upstream unit.
+
+**Current Ask Summary**:
+An aggregate observation containing sample counts, exclusions, minimum and median comparable current asks; it retains no listing title, seller, contact, or raw response.
