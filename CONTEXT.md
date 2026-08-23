@@ -46,3 +46,15 @@ A non-private, single-canonical-item listing with a positive exact per-unit amou
 
 **Current Ask Summary**:
 An aggregate observation containing sample counts, exclusions, minimum and median comparable current asks; it retains no listing title, seller, contact, or raw response.
+
+**Market Scope**:
+The combination of one Season Scope and one Play Mode requested for a current-ask observation.
+
+**Season Scope**:
+Whether a Market Scope targets non-season play or the latest season.
+
+**Play Mode**:
+Whether a Market Scope targets normal or hardcore play.
+
+**Market Scope Unavailable**:
+A normal market state in which the requested supported Market Scope is absent; it is distinct from malformed or ambiguous provider taxonomy.

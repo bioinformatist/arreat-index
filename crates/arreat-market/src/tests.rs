@@ -23,6 +23,10 @@ fn item(value: &str) -> CanonicalItemId {
     value.parse().unwrap()
 }
 
+fn scope(season: SeasonScope, mode: PlayMode) -> MarketScope {
+    MarketScope { season, mode }
+}
+
 struct FakeTransport {
     responses: VecDeque<Result<RawResponse, MarketError>>,
     urls: Vec<String>,
@@ -97,12 +101,32 @@ fn named_flow(family: Family) -> Vec<Value> {
     let mut values = vec![
         json!([{"Name":GAME_LABEL,"Id":"game"}]),
         json!([{"Name":root_name,"Id":"root"}]),
-        json!([{"Name":"非赛季 普通","Id":"server"}]),
+        json!([{"Name":"非赛季","Id":"area"}]),
+        json!([
+            {"Name":"非赛季(术士君临)","Id":"server"},
+            {"Name":"非赛季普通","Id":"legacy"}
+        ]),
         Value::Array(children),
         listing_page(json!([{"shopno":"one","title":title,"singleprice":"2.50","unit":"元/件"}])),
     ];
     values.extend((0..8).map(|_| listing_page(json!([]))));
     values
+}
+
+fn supported_rune_flow(area_label: &str, server_label: &str) -> Vec<Value> {
+    let fixture_values: Vec<Value> =
+        serde_json::from_reader(File::open(fixture("rune-flow.json")).unwrap()).unwrap();
+    vec![
+        fixture_values[0].clone(),
+        fixture_values[1].clone(),
+        json!([{"Name":area_label,"Id":"area"}]),
+        json!([
+            {"Name":server_label,"Id":"supported"},
+            {"Name":if area_label == "非赛季" { "非赛季普通" } else { "赛季普通" },"Id":"legacy"}
+        ]),
+        fixture_values[3].clone(),
+        fixture_values[4].clone(),
+    ]
 }
 
 fn spawn_loopback(
@@ -154,8 +178,13 @@ fn spawn_loopback(
 
 #[test]
 fn rune_flow_is_exact_private_stable_and_rate_limited() {
-    let values: Vec<Value> =
+    let mut values: Vec<Value> =
         serde_json::from_reader(File::open(fixture("rune-flow.json")).unwrap()).unwrap();
+    values.insert(2, json!([{"Name":"非赛季","Id":"area"}]));
+    values[3] = json!([
+        {"Name":"非赛季(术士君临)","Id":"server"},
+        {"Name":"非赛季普通","Id":"legacy"}
+    ]);
     let mut transport = FakeTransport::json(values);
     let mut clock = FakeClock {
         now: 1_700_000_000_000,
@@ -165,12 +194,15 @@ fn rune_flow_is_exact_private_stable_and_rate_limited() {
         &catalog(),
         &item("base:r17"),
         Family::Rune,
+        MarketScope::default(),
         &mut transport,
         &mut clock,
     )
     .unwrap();
     assert_eq!(summary.status, CurrentAskStatus::Resolved);
-    assert_eq!(summary.request_count, 5);
+    assert_eq!(summary.schema_version, 2);
+    assert_eq!(summary.market_scope, MarketScope::default());
+    assert_eq!(summary.request_count, 6);
     assert_eq!(summary.sample_count, 3);
     assert_eq!(summary.listing_count, 4);
     assert_eq!(summary.minimum_unit_ask.unwrap().to_string(), "1.20");
@@ -178,7 +210,7 @@ fn rune_flow_is_exact_private_stable_and_rate_limited() {
     assert_eq!(summary.exclusions.privacy, 1);
     assert_eq!(summary.exclusions.duplicate_listing, 1);
     assert_eq!(summary.exclusions.non_positive_amount, 1);
-    assert_eq!(clock.sleeps, vec![Duration::from_millis(1100); 4]);
+    assert_eq!(clock.sleeps, vec![Duration::from_millis(1100); 5]);
     let bytes = serde_json::to_vec(&summary).unwrap();
     assert_eq!(bytes, serde_json::to_vec(&summary).unwrap());
     let text = String::from_utf8(bytes).unwrap();
@@ -186,7 +218,8 @@ fn rune_flow_is_exact_private_stable_and_rate_limited() {
         assert!(!text.contains(forbidden));
     }
     assert!(text.contains("\"price_type\":\"current_asks\""));
-    assert!(text.contains("\"observed_at\":\"2023-11-14T22:13:24Z\""));
+    assert!(text.contains("\"market_scope\":{\"season\":\"non_season\",\"mode\":\"normal\"}"));
+    assert!(text.contains("\"observed_at\":\"2023-11-14T22:13:25Z\""));
 }
 
 #[test]
@@ -204,23 +237,446 @@ fn named_flows_query_nine_distinct_leaves_once_in_order() {
             &catalog(),
             &item(item_id),
             family,
+            MarketScope::default(),
             &mut transport,
             &mut clock,
         )
         .unwrap();
-        assert_eq!(summary.request_count, 13);
+        assert_eq!(summary.request_count, 14);
         assert_eq!(summary.minimum_unit_ask.unwrap().to_string(), "2.50");
         let mut expected = vec![
             "https://game.dd373.com/api/game/list".to_owned(),
             "https://game.dd373.com/Api/GameGoodsType/List?parentId=game".to_owned(),
-            format!("https://game.dd373.com/Api/GameOther/List?parentId={REALM_ID}"),
+            "https://game.dd373.com/Api/GameOther/List?parentId=game".to_owned(),
+            "https://game.dd373.com/Api/GameOther/List?parentId=area".to_owned(),
             "https://game.dd373.com/Api/GameGoodsType/List?parentId=root".to_owned(),
         ];
         expected.extend((1..=9).map(|number| format!(
-            "https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=game&GameOtherId={REALM_ID}_server&GameShopTypeId=leaf{number:02}"
+            "https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=game&GameOtherId=area_server&GameShopTypeId=leaf{number:02}"
         )));
         assert_eq!(transport.urls, expected);
-        assert_eq!(clock.sleeps, vec![Duration::from_millis(1100); 12]);
+        assert!(transport.urls.iter().all(|url| !url.contains("legacy")));
+        assert_eq!(clock.sleeps, vec![Duration::from_millis(1100); 13]);
+    }
+}
+
+#[test]
+fn every_supported_scope_and_latest_label_synonym_resolves_exactly() {
+    let cases = [
+        (
+            scope(SeasonScope::NonSeason, PlayMode::Normal),
+            "非赛季",
+            "非赛季(术士君临)",
+        ),
+        (
+            scope(SeasonScope::NonSeason, PlayMode::Hardcore),
+            "非赛季",
+            "非赛季专家(术士君临)",
+        ),
+        (
+            scope(SeasonScope::Latest, PlayMode::Normal),
+            "新赛季",
+            "新赛季(术士君临)",
+        ),
+        (
+            scope(SeasonScope::Latest, PlayMode::Hardcore),
+            "新赛季",
+            "新赛季专家(术士君临)",
+        ),
+        (
+            scope(SeasonScope::Latest, PlayMode::Normal),
+            "赛季",
+            "赛季(术士君临)",
+        ),
+        (
+            scope(SeasonScope::Latest, PlayMode::Hardcore),
+            "赛季",
+            "赛季专家(术士君临)",
+        ),
+    ];
+    for (market_scope, area_label, server_label) in cases {
+        let mut transport = FakeTransport::json(supported_rune_flow(area_label, server_label));
+        let mut clock = FakeClock {
+            now: 1_700_000_000_000,
+            sleeps: Vec::new(),
+        };
+        let summary = lookup_with(
+            &catalog(),
+            &item("base:r17"),
+            Family::Rune,
+            market_scope,
+            &mut transport,
+            &mut clock,
+        )
+        .unwrap();
+        assert_eq!(summary.status, CurrentAskStatus::Resolved);
+        assert_eq!(summary.market_scope, market_scope);
+        assert_eq!(summary.request_count, 6);
+        assert!(
+            transport
+                .urls
+                .iter()
+                .any(|url| url.contains("GameOtherId=area_supported"))
+        );
+        assert!(transport.urls.iter().all(|url| !url.contains("legacy")));
+    }
+}
+
+#[test]
+fn supported_scope_absence_is_a_zeroed_schema_two_summary() {
+    let item = item("base:r17");
+    for (values, expected_requests) in [
+        (
+            vec![
+                json!([{"Name":GAME_LABEL,"Id":"game"}]),
+                json!([{"Name":"符文","Id":"root"}]),
+                json!([{"Name":"新赛季","Id":"latest"}]),
+            ],
+            3,
+        ),
+        (
+            vec![
+                json!([{"Name":GAME_LABEL,"Id":"game"}]),
+                json!([{"Name":"符文","Id":"root"}]),
+                json!([{"Name":"非赛季","Id":"area"}]),
+                json!([
+                    {"Name":"非赛季普通","Id":"legacy-normal"},
+                    {"Name":"非赛季专家","Id":"legacy-hardcore"}
+                ]),
+            ],
+            4,
+        ),
+    ] {
+        let mut transport = FakeTransport::json(values);
+        let mut clock = FakeClock {
+            now: 1_700_000_000_000,
+            sleeps: Vec::new(),
+        };
+        let summary = lookup_with(
+            &catalog(),
+            &item,
+            Family::Rune,
+            MarketScope::default(),
+            &mut transport,
+            &mut clock,
+        )
+        .unwrap();
+        assert_eq!(summary.schema_version, 2);
+        assert_eq!(summary.market_scope, MarketScope::default());
+        assert_eq!(summary.status, CurrentAskStatus::MarketScopeUnavailable);
+        assert_eq!(summary.request_count, expected_requests);
+        assert_eq!(summary.sample_count, 0);
+        assert_eq!(summary.listing_count, 0);
+        assert_eq!(summary.exclusions, ExclusionCounts::default());
+        assert_eq!(summary.unit, None);
+        assert_eq!(summary.minimum_unit_ask, None);
+        assert_eq!(summary.median_unit_ask, None);
+        let serialized = serde_json::to_string(&summary).unwrap();
+        assert!(serialized.contains("\"status\":\"market_scope_unavailable\""));
+        for forbidden in ["title", "url", "seller", "contact", "shopno", "raw"] {
+            assert!(!serialized.contains(forbidden));
+        }
+        assert!(transport.urls.iter().all(|url| !url.contains("legacy")));
+    }
+}
+
+#[test]
+fn area_and_server_taxonomy_fail_closed_on_missing_ambiguous_or_inconsistent_rows() {
+    assert!(matches!(
+        area_id(&json!([{"Name":"天梯","Id":"x"}]), SeasonScope::Latest),
+        Err(MarketError::Taxonomy)
+    ));
+    assert!(matches!(
+        area_id(
+            &json!([{"Name":"非赛季","Id":"a"},{"Name":"天梯","Id":"b"}]),
+            SeasonScope::NonSeason
+        ),
+        Err(MarketError::Taxonomy)
+    ));
+    assert!(matches!(
+        area_id(
+            &json!([{"Name":"新赛季","Id":"a"},{"Name":"天梯","Id":"b"}]),
+            SeasonScope::Latest
+        ),
+        Err(MarketError::Taxonomy)
+    ));
+    assert!(matches!(
+        area_id(
+            &json!([
+                {"Name":"新赛季","Id":"a"},
+                {"Name":"赛季","Id":"b"}
+            ]),
+            SeasonScope::Latest
+        ),
+        Err(MarketError::Taxonomy)
+    ));
+    assert_eq!(
+        area_id(
+            &json!([
+                {"Name":"新赛季","Id":"a"},
+                {"Name":"赛季","Id":"a"}
+            ]),
+            SeasonScope::Latest
+        )
+        .unwrap(),
+        Some("a".to_owned())
+    );
+    assert_eq!(
+        area_id(
+            &json!([{"Name":"非赛季","Id":"abcdef123456"}]),
+            SeasonScope::NonSeason
+        )
+        .unwrap(),
+        Some("abcdef123456".to_owned())
+    );
+    assert_eq!(
+        area_id(
+            &json!([{"Name":"赛季","Id":"123e4567-e89b-12d3-a456-426614174000"}]),
+            SeasonScope::Latest
+        )
+        .unwrap(),
+        Some("123e4567-e89b-12d3-a456-426614174000".to_owned())
+    );
+    assert!(matches!(
+        area_id(&json!([{"Name":"非赛季","Id":""}]), SeasonScope::NonSeason),
+        Err(MarketError::Taxonomy)
+    ));
+    let default = MarketScope::default();
+    assert!(matches!(
+        server_id(&json!([{"Name":"普通","Id":"x"}]), default),
+        Err(MarketError::Taxonomy)
+    ));
+    assert!(matches!(
+        server_id(
+            &json!([{"Name":"非赛季普通","Id":"x"},{"Name":"天梯","Id":"y"}]),
+            default
+        ),
+        Err(MarketError::Taxonomy)
+    ));
+    assert!(matches!(
+        server_id(
+            &json!([{"Name":"非赛季(术士君临)","Id":"x"},{"Name":"天梯","Id":"y"}]),
+            default
+        ),
+        Err(MarketError::Taxonomy)
+    ));
+    assert!(matches!(
+        server_id(
+            &json!([
+                {"Name":"非赛季(术士君临)","Id":"a"},
+                {"Name":"非赛季(术士君临)","Id":"b"}
+            ]),
+            default
+        ),
+        Err(MarketError::Taxonomy)
+    ));
+    assert_eq!(
+        server_id(
+            &json!([
+                {"Name":"非赛季(术士君临)","Id":"a"},
+                {"Name":"非赛季(术士君临)","Id":"a"}
+            ]),
+            default
+        )
+        .unwrap(),
+        Some("a".to_owned())
+    );
+    assert_eq!(
+        server_id(
+            &json!([{"Name":"非赛季(术士君临)","Id":"123e4567-e89b-12d3-a456-426614174000"}]),
+            default
+        )
+        .unwrap(),
+        Some("123e4567-e89b-12d3-a456-426614174000".to_owned())
+    );
+    assert!(matches!(
+        server_id(&json!([{"Name":"非赛季(术士君临)","Id":""}]), default),
+        Err(MarketError::Taxonomy)
+    ));
+    assert!(matches!(
+        server_id(&json!([{"Name":"赛季(术士君临)","Id":"latest"}]), default),
+        Err(MarketError::Taxonomy)
+    ));
+
+    assert!(matches!(
+        area_id(
+            &json!([
+                {"Name":"非赛季","Id":"area"},
+                {"Name":"非赛季"}
+            ]),
+            SeasonScope::NonSeason
+        ),
+        Err(MarketError::Taxonomy)
+    ));
+    assert!(matches!(
+        server_id(
+            &json!([
+                {"Name":"非赛季(术士君临)","Id":"server"},
+                {"Name":"非赛季普通"}
+            ]),
+            default
+        ),
+        Err(MarketError::Taxonomy)
+    ));
+    for bad_id in [json!(123), Value::Null, json!({"k":"v"}), json!([1])] {
+        assert!(matches!(
+            area_id(
+                &json!([
+                    {"Name":"非赛季","Id":"legacy"},
+                    {"Name":"新赛季","Id":bad_id}
+                ]),
+                SeasonScope::Latest
+            ),
+            Err(MarketError::Taxonomy)
+        ));
+        assert!(matches!(
+            server_id(
+                &json!([
+                    {"Name":"非赛季普通","Id":"legacy"},
+                    {"Name":"非赛季(术士君临)","Id":bad_id}
+                ]),
+                default
+            ),
+            Err(MarketError::Taxonomy)
+        ));
+    }
+    assert!(matches!(
+        area_id(
+            &json!([
+                {"Name":"非赛季","Id":"x"},
+                {"Id":"y"}
+            ]),
+            SeasonScope::NonSeason
+        ),
+        Err(MarketError::Taxonomy)
+    ));
+    assert!(matches!(
+        server_id(
+            &json!([
+                {"Name":"非赛季(术士君临)","Id":"x"},
+                {"Id":"y"}
+            ]),
+            default
+        ),
+        Err(MarketError::Taxonomy)
+    ));
+    assert!(matches!(
+        area_id(
+            &json!([
+                {"Name":"非赛季","name":"赛季","Id":"a"}
+            ]),
+            SeasonScope::NonSeason
+        ),
+        Err(MarketError::Taxonomy)
+    ));
+    assert!(matches!(
+        server_id(
+            &json!([
+                {"Name":"非赛季(术士君临)","name":"新赛季(术士君临)","Id":"a"}
+            ]),
+            default
+        ),
+        Err(MarketError::Taxonomy)
+    ));
+    assert!(matches!(
+        area_id(
+            &json!([
+                {"Name":"非赛季","Id":"a","id":"b"}
+            ]),
+            SeasonScope::NonSeason
+        ),
+        Err(MarketError::Taxonomy)
+    ));
+    assert!(matches!(
+        server_id(
+            &json!([
+                {"Name":"非赛季(术士君临)","Id":"a","id":"b"}
+            ]),
+            default
+        ),
+        Err(MarketError::Taxonomy)
+    ));
+    assert_eq!(
+        area_id(
+            &json!([
+                {"Name":"非赛季","name":"非赛季","Id":"dup","id":"dup"},
+                {"Name":"新赛季","Id":"legacy"}
+            ]),
+            SeasonScope::NonSeason
+        )
+        .unwrap(),
+        Some("dup".to_owned())
+    );
+    assert_eq!(
+        server_id(
+            &json!([
+                {"Name":"非赛季(术士君临)","name":"非赛季(术士君临)","Id":"dup","id":"dup"},
+                {"Name":"非赛季普通","Id":"legacy"}
+            ]),
+            default
+        )
+        .unwrap(),
+        Some("dup".to_owned())
+    );
+}
+
+#[test]
+fn area_and_server_unsafe_ids_are_taxonomy_and_are_not_used_in_requests() {
+    const BAD_IDS: [&str; 7] = ["a b", "a&b", "a?b", "a#b", "a/b", "a%b", "中文"];
+    for bad in BAD_IDS {
+        let mut transport = FakeTransport::json(vec![
+            json!([{"Name":GAME_LABEL,"Id":"game"}]),
+            json!([{"Name":"符文","Id":"root"}]),
+            json!([{"Name":"非赛季","Id":bad}]),
+        ]);
+        let mut clock = FakeClock {
+            now: 1_700_000_000_000,
+            sleeps: Vec::new(),
+        };
+        assert!(matches!(
+            lookup_with(
+                &catalog(),
+                &item("base:r17"),
+                Family::Rune,
+                MarketScope::default(),
+                &mut transport,
+                &mut clock
+            ),
+            Err(MarketError::Taxonomy)
+        ));
+        assert_eq!(transport.urls.len(), 3);
+        assert!(transport.urls.iter().all(|url| !url.contains(bad)));
+        assert!(!transport.urls.iter().any(|url| url.contains("legacy")));
+
+        let mut transport = FakeTransport::json(vec![
+            json!([{"Name":GAME_LABEL,"Id":"game"}]),
+            json!([{"Name":"符文","Id":"root"}]),
+            json!([{"Name":"非赛季","Id":"area"}]),
+            json!([{"Name":"非赛季(术士君临)","Id":bad}, {"Name":"非赛季普通","Id":"legacy"}]),
+        ]);
+        let mut clock = FakeClock {
+            now: 1_700_000_000_000,
+            sleeps: Vec::new(),
+        };
+        assert!(matches!(
+            lookup_with(
+                &catalog(),
+                &item("base:r17"),
+                Family::Rune,
+                MarketScope::default(),
+                &mut transport,
+                &mut clock
+            ),
+            Err(MarketError::Taxonomy)
+        ));
+        assert_eq!(transport.urls.len(), 4);
+        assert!(transport.urls.iter().all(|url| !url.contains(bad)));
+        assert!(
+            transport
+                .urls
+                .iter()
+                .all(|url| !url.contains("GameOtherId"))
+        );
     }
 }
 
@@ -263,6 +719,7 @@ fn named_matching_uses_all_catalog_layers_and_filters_before_price() {
         Family::Unique,
         candidates,
         records,
+        MarketScope::default(),
         13,
         0,
     )
@@ -280,12 +737,30 @@ fn even_median_is_exact_and_empty_is_success() {
         json!({"shopno":"1","title":"x","singleprice":"1.1","unit":"u"}),
         json!({"shopno":"2","title":"x","singleprice":2.2,"unit":"u"}),
     ];
-    let result = summarize(&item("base:r17"), Family::Rune, &[], asks, 5, 0).unwrap();
+    let result = summarize(
+        &item("base:r17"),
+        Family::Rune,
+        &[],
+        asks,
+        MarketScope::default(),
+        5,
+        0,
+    )
+    .unwrap();
     assert_eq!(
         result.median_unit_ask.unwrap(),
         Decimal::from_str_exact("1.65").unwrap()
     );
-    let empty = summarize(&item("base:r17"), Family::Rune, &[], vec![], 5, 0).unwrap();
+    let empty = summarize(
+        &item("base:r17"),
+        Family::Rune,
+        &[],
+        vec![],
+        MarketScope::default(),
+        5,
+        0,
+    )
+    .unwrap();
     assert_eq!(empty.status, CurrentAskStatus::NoComparableCurrentAsks);
     assert_eq!(empty.unit, None);
     assert_eq!(empty.minimum_unit_ask, None);
@@ -297,7 +772,15 @@ fn price_and_unit_contract_fails_closed() {
     for price in [json!("bad"), json!(null), json!({}), json!("NaN")] {
         let record = json!({"shopno":"1","title":"x","singleprice":price,"unit":"u"});
         assert!(matches!(
-            summarize(&item("base:r17"), Family::Rune, &[], vec![record], 5, 0),
+            summarize(
+                &item("base:r17"),
+                Family::Rune,
+                &[],
+                vec![record],
+                MarketScope::default(),
+                5,
+                0
+            ),
             Err(MarketError::Price)
         ));
     }
@@ -308,6 +791,7 @@ fn price_and_unit_contract_fails_closed() {
             Family::Rune,
             &[],
             vec![missing_price],
+            MarketScope::default(),
             5,
             0
         ),
@@ -318,7 +802,15 @@ fn price_and_unit_contract_fails_closed() {
         json!({"shopno":"2","title":"x","singleprice":"2","unit":"b"}),
     ];
     assert!(matches!(
-        summarize(&item("base:r17"), Family::Rune, &[], mixed, 5, 0),
+        summarize(
+            &item("base:r17"),
+            Family::Rune,
+            &[],
+            mixed,
+            MarketScope::default(),
+            5,
+            0
+        ),
         Err(MarketError::Unit)
     ));
 }
@@ -526,6 +1018,7 @@ fn numeric_response_preserves_high_precision_lexeme() {
         Family::Rune,
         &[],
         listing_records(&response).unwrap(),
+        MarketScope::default(),
         1,
         0,
     )

@@ -18,7 +18,6 @@ use serde_json::Value;
 use thiserror::Error;
 
 const GAME_LABEL: &str = "暗黑2：重制版国服";
-const REALM_ID: &str = "7b1751f92c844871ab80cae0822feea2";
 const USER_AGENT: &str = "Arreat-Index-Current-Asks/0.1";
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(20);
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
@@ -31,6 +30,7 @@ const MAX_BODY_BYTES: usize = 2 * 1024 * 1024;
 pub struct CurrentAskSummary {
     pub schema_version: u32,
     pub item_id: CanonicalItemId,
+    pub market_scope: MarketScope,
     pub status: CurrentAskStatus,
     pub price_type: PriceType,
     pub provider: Provider,
@@ -52,6 +52,36 @@ pub struct CurrentAskSummary {
 pub enum CurrentAskStatus {
     Resolved,
     NoComparableCurrentAsks,
+    MarketScopeUnavailable,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SeasonScope {
+    NonSeason,
+    Latest,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PlayMode {
+    Normal,
+    Hardcore,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct MarketScope {
+    pub season: SeasonScope,
+    pub mode: PlayMode,
+}
+
+impl Default for MarketScope {
+    fn default() -> Self {
+        Self {
+            season: SeasonScope::NonSeason,
+            mode: PlayMode::Normal,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -189,13 +219,24 @@ impl Dd373CurrentAskLookup {
         Ok(Self { catalog, client })
     }
 
-    pub fn lookup(&self, item: &CanonicalItemId) -> Result<CurrentAskSummary, MarketError> {
+    pub fn lookup(
+        &self,
+        item: &CanonicalItemId,
+        market_scope: MarketScope,
+    ) -> Result<CurrentAskSummary, MarketError> {
         let family = self.admit(item)?;
         let mut transport = ReqwestTransport {
             client: &self.client,
         };
         let mut clock = SystemClock;
-        lookup_with(&self.catalog, item, family, &mut transport, &mut clock)
+        lookup_with(
+            &self.catalog,
+            item,
+            family,
+            market_scope,
+            &mut transport,
+            &mut clock,
+        )
     }
 
     fn admit(&self, item: &CanonicalItemId) -> Result<Family, MarketError> {
@@ -399,6 +440,7 @@ fn lookup_with(
     catalog: &Catalog,
     item: &CanonicalItemId,
     family: Family,
+    market_scope: MarketScope,
     transport: &mut dyn Transport,
     clock: &mut dyn Clock,
 ) -> Result<CurrentAskSummary, MarketError> {
@@ -414,11 +456,29 @@ fn lookup_with(
     let roots = session.json(&format!(
         "https://game.dd373.com/Api/GameGoodsType/List?parentId={game_id}"
     ))?;
-    let realm = session.json(&format!(
-        "https://game.dd373.com/Api/GameOther/List?parentId={REALM_ID}"
+    let areas = session.json(&format!(
+        "https://game.dd373.com/Api/GameOther/List?parentId={game_id}"
     ))?;
-    let server_id = ordinary_server_id(&realm)?;
-    let realm_path = format!("{REALM_ID}_{server_id}");
+    let Some(area_id) = area_id(&areas, market_scope.season)? else {
+        return Ok(unavailable_summary(
+            item,
+            market_scope,
+            session.requests,
+            session.clock.now_millis(),
+        ));
+    };
+    let servers = session.json(&format!(
+        "https://game.dd373.com/Api/GameOther/List?parentId={area_id}"
+    ))?;
+    let Some(server_id) = server_id(&servers, market_scope)? else {
+        return Ok(unavailable_summary(
+            item,
+            market_scope,
+            session.requests,
+            session.clock.now_millis(),
+        ));
+    };
+    let realm_path = format!("{area_id}_{server_id}");
     let root_label = match family {
         Family::Rune => "符文",
         Family::Unique => "暗金装备&饰品",
@@ -444,6 +504,7 @@ fn lookup_with(
         family,
         candidates,
         records,
+        market_scope,
         session.requests,
         session.clock.now_millis(),
     )
@@ -474,6 +535,59 @@ fn objects_with_names<'a>(value: &'a Value, out: &mut Vec<(String, String, &'a V
         }
         _ => {}
     }
+}
+
+fn taxonomic_objects_with_names<'a>(
+    value: &'a Value,
+    out: &mut Vec<(String, String, &'a Value)>,
+) -> Result<(), MarketError> {
+    match value {
+        Value::Object(map) => {
+            let has_name_key = map.contains_key("Name") || map.contains_key("name");
+            let has_id_key = map.contains_key("Id") || map.contains_key("id");
+            if has_name_key || has_id_key {
+                let name = match (map.get("Name"), map.get("name")) {
+                    (Some(name), Some(name_alias)) => {
+                        let name = name.as_str().ok_or(MarketError::Taxonomy)?;
+                        let name_alias = name_alias.as_str().ok_or(MarketError::Taxonomy)?;
+                        if name != name_alias {
+                            return Err(MarketError::Taxonomy);
+                        }
+                        name.to_owned()
+                    }
+                    (Some(name), None) => name.as_str().ok_or(MarketError::Taxonomy)?.to_owned(),
+                    (None, Some(name)) => name.as_str().ok_or(MarketError::Taxonomy)?.to_owned(),
+                    (None, None) => return Err(MarketError::Taxonomy),
+                };
+
+                let id = match (map.get("Id"), map.get("id")) {
+                    (Some(id), Some(id_alias)) => {
+                        let id = id.as_str().ok_or(MarketError::Taxonomy)?;
+                        let id_alias = id_alias.as_str().ok_or(MarketError::Taxonomy)?;
+                        if id != id_alias {
+                            return Err(MarketError::Taxonomy);
+                        }
+                        id.to_owned()
+                    }
+                    (Some(id), None) => id.as_str().ok_or(MarketError::Taxonomy)?.to_owned(),
+                    (None, Some(id)) => id.as_str().ok_or(MarketError::Taxonomy)?.to_owned(),
+                    (None, None) => return Err(MarketError::Taxonomy),
+                };
+
+                out.push((name, id, value));
+            }
+            for child in map.values() {
+                taxonomic_objects_with_names(child, out)?;
+            }
+        }
+        Value::Array(values) => {
+            for child in values {
+                taxonomic_objects_with_names(child, out)?;
+            }
+        }
+        _ => {}
+    }
+    Ok(())
 }
 
 fn exact_id(value: &Value, label: &str) -> Result<String, MarketError> {
@@ -517,21 +631,107 @@ fn validate_game(value: &Value, id: &str) -> Result<(), MarketError> {
     }
 }
 
-fn ordinary_server_id(value: &Value) -> Result<String, MarketError> {
+fn valid_taxonomy_id(id: &str) -> bool {
+    !id.is_empty()
+        && id
+            .as_bytes()
+            .iter()
+            .all(|byte| byte.is_ascii_alphanumeric() || *byte == b'-')
+}
+
+fn area_id(value: &Value, season: SeasonScope) -> Result<Option<String>, MarketError> {
     let mut objects = Vec::new();
-    objects_with_names(value, &mut objects);
-    let ids: BTreeSet<_> = objects
-        .into_iter()
-        .filter(|(name, _, _)| {
-            name.contains("非赛季") && name.contains("普通") && !name.contains("专家")
-        })
-        .map(|(_, id, _)| id)
-        .collect();
-    if ids.len() == 1 {
-        Ok(ids.into_iter().next().unwrap())
-    } else {
-        Err(MarketError::Taxonomy)
+    taxonomic_objects_with_names(value, &mut objects)?;
+
+    let mut ids = BTreeSet::new();
+    let mut has_row = false;
+    for (name, id, _) in objects {
+        has_row = true;
+        let is_area_label = matches!(name.as_str(), "非赛季" | "新赛季" | "赛季");
+        if !is_area_label {
+            return Err(MarketError::Taxonomy);
+        }
+        if !valid_taxonomy_id(&id) {
+            return Err(MarketError::Taxonomy);
+        }
+        if matches!(
+            (season, name.as_str()),
+            (SeasonScope::NonSeason, "非赛季")
+                | (SeasonScope::Latest, "新赛季")
+                | (SeasonScope::Latest, "赛季")
+        ) {
+            ids.insert(id);
+        }
     }
+    if !has_row {
+        return Err(MarketError::Taxonomy);
+    }
+    if ids.len() > 1 {
+        Err(MarketError::Taxonomy)
+    } else {
+        Ok(ids.into_iter().next())
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ServerKind {
+    Supported(MarketScope),
+    Legacy(MarketScope),
+}
+
+fn server_kind(label: &str) -> Option<ServerKind> {
+    let (kind, season, mode) = match label {
+        "非赛季(术士君临)" => (true, SeasonScope::NonSeason, PlayMode::Normal),
+        "非赛季专家(术士君临)" => (true, SeasonScope::NonSeason, PlayMode::Hardcore),
+        "新赛季(术士君临)" | "赛季(术士君临)" => {
+            (true, SeasonScope::Latest, PlayMode::Normal)
+        }
+        "新赛季专家(术士君临)" | "赛季专家(术士君临)" => {
+            (true, SeasonScope::Latest, PlayMode::Hardcore)
+        }
+        "非赛季普通" => (false, SeasonScope::NonSeason, PlayMode::Normal),
+        "非赛季专家" => (false, SeasonScope::NonSeason, PlayMode::Hardcore),
+        "新赛季普通" | "赛季普通" => (false, SeasonScope::Latest, PlayMode::Normal),
+        "新赛季专家" | "赛季专家" => (false, SeasonScope::Latest, PlayMode::Hardcore),
+        _ => return None,
+    };
+    let scope = MarketScope { season, mode };
+    Some(if kind {
+        ServerKind::Supported(scope)
+    } else {
+        ServerKind::Legacy(scope)
+    })
+}
+
+fn server_id(value: &Value, scope: MarketScope) -> Result<Option<String>, MarketError> {
+    let mut objects = Vec::new();
+    taxonomic_objects_with_names(value, &mut objects)?;
+    let mut ids = BTreeSet::new();
+    let mut has_row = false;
+
+    for (name, id, _) in objects {
+        has_row = true;
+        let Some(kind) = server_kind(&name) else {
+            return Err(MarketError::Taxonomy);
+        };
+        let row_scope = match kind {
+            ServerKind::Supported(row_scope) | ServerKind::Legacy(row_scope) => row_scope,
+        };
+        if !valid_taxonomy_id(&id) || row_scope.season != scope.season {
+            return Err(MarketError::Taxonomy);
+        }
+        if matches!(kind, ServerKind::Supported(row_scope) if row_scope == scope) {
+            ids.insert(id);
+        }
+    }
+    if !has_row {
+        return Err(MarketError::Taxonomy);
+    }
+
+    if ids.len() > 1 {
+        return Err(MarketError::Taxonomy);
+    }
+    Ok(ids.into_iter().next())
 }
 
 fn leaves_for(
@@ -608,6 +808,7 @@ fn summarize(
     family: Family,
     candidates: &[Candidate],
     records: Vec<Value>,
+    market_scope: MarketScope,
     request_count: usize,
     observed_ms: u64,
 ) -> Result<CurrentAskSummary, MarketError> {
@@ -695,22 +896,73 @@ fn summarize(
             unit,
         )
     };
-    Ok(CurrentAskSummary {
-        schema_version: 1,
+    Ok(summary(
+        item,
+        market_scope,
+        status,
+        unit,
+        minimum,
+        median,
+        sample_count,
+        listing_count,
+        exclusions,
+        request_count,
+        observed_ms,
+    ))
+}
+
+fn unavailable_summary(
+    item: &CanonicalItemId,
+    market_scope: MarketScope,
+    request_count: usize,
+    observed_ms: u64,
+) -> CurrentAskSummary {
+    summary(
+        item,
+        market_scope,
+        CurrentAskStatus::MarketScopeUnavailable,
+        None,
+        None,
+        None,
+        0,
+        0,
+        ExclusionCounts::default(),
+        request_count,
+        observed_ms,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn summary(
+    item: &CanonicalItemId,
+    market_scope: MarketScope,
+    status: CurrentAskStatus,
+    unit: Option<String>,
+    minimum_unit_ask: Option<Decimal>,
+    median_unit_ask: Option<Decimal>,
+    sample_count: usize,
+    listing_count: usize,
+    exclusions: ExclusionCounts,
+    request_count: usize,
+    observed_ms: u64,
+) -> CurrentAskSummary {
+    CurrentAskSummary {
+        schema_version: 2,
         item_id: item.clone(),
+        market_scope,
         status,
         price_type: PriceType::CurrentAsks,
         provider: Provider::Dd373,
         currency: Currency::CNY,
         unit,
-        minimum_unit_ask: minimum,
-        median_unit_ask: median,
+        minimum_unit_ask,
+        median_unit_ask,
         sample_count,
         listing_count,
         exclusions,
         request_count,
         observed_at: rfc3339(observed_ms / 1000),
-    })
+    }
 }
 
 fn parse_decimal(value: &Value) -> Result<Decimal, MarketError> {

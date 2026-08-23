@@ -9,9 +9,11 @@ use std::{
 
 use arreat_core::APP_NAME;
 use arreat_data::CanonicalItemId;
-use arreat_market::{CurrentAskSummary, Dd373CurrentAskLookup, MarketError};
+use arreat_market::{
+    CurrentAskSummary, Dd373CurrentAskLookup, MarketError, MarketScope, PlayMode, SeasonScope,
+};
 
-const MARKET_HELP: &str = "查询 DD373 当前卖家挂单（实验性）\n\n用法:\n  arreat-app market lookup --catalog <PATH> --item <CANONICAL-ID>\n\n选项:\n  --catalog <PATH>          临时生成的名称目录 JSON\n  --item <CANONICAL-ID>     base:r01..base:r33，或目录中的暗金/套装物品\n  -h, --help                显示帮助\n";
+const MARKET_HELP: &str = "查询 DD373 当前卖家挂单（实验性）\n\n用法:\n  arreat-app market lookup --catalog <PATH> --item <CANONICAL-ID> [--season <SEASON>] [--mode <MODE>]\n\n选项:\n  --catalog <PATH>          临时生成的名称目录 JSON\n  --item <CANONICAL-ID>     base:r01..base:r33，或目录中的暗金/套装物品\n  --season <SEASON>         non-season 或 latest（默认 non-season）\n  --mode <MODE>             normal 或 hardcore（默认 normal）\n  -h, --help                显示帮助\n";
 
 enum Command {
     Baseline,
@@ -20,6 +22,7 @@ enum Command {
     Lookup {
         catalog: PathBuf,
         item: CanonicalItemId,
+        market_scope: MarketScope,
     },
 }
 
@@ -47,19 +50,35 @@ fn parse_args(args: Vec<OsString>) -> Result<Command, &'static str> {
     {
         return Ok(Command::Help);
     }
-    if args.len() != 6 || args[0] != "market" || args[1] != "lookup" {
+    if args.len() < 6
+        || !(args.len() - 2).is_multiple_of(2)
+        || args[0] != "market"
+        || args[1] != "lookup"
+    {
         return Err("参数无效；请运行 arreat-app market lookup --help。");
     }
     let mut catalog = None;
     let mut item = None;
+    let mut season = None;
+    let mut mode = None;
     for pair in args[2..].chunks_exact(2) {
+        let value = pair[1].to_str().ok_or("参数值必须是 UTF-8 文本。")?;
         if pair[0] == "--catalog" && catalog.is_none() {
-            catalog = Some(PathBuf::from(&pair[1]));
+            catalog = Some(PathBuf::from(value));
         } else if pair[0] == "--item" && item.is_none() {
-            item = Some(
-                CanonicalItemId::from_str(pair[1].to_str().ok_or("物品 ID 必须是 UTF-8 文本。")?)
-                    .map_err(|_| "物品 ID 格式无效。")?,
-            );
+            item = Some(CanonicalItemId::from_str(value).map_err(|_| "物品 ID 格式无效。")?);
+        } else if pair[0] == "--season" && season.is_none() {
+            season = Some(match value {
+                "non-season" => SeasonScope::NonSeason,
+                "latest" => SeasonScope::Latest,
+                _ => return Err("--season 必须是 non-season 或 latest。"),
+            });
+        } else if pair[0] == "--mode" && mode.is_none() {
+            mode = Some(match value {
+                "normal" => PlayMode::Normal,
+                "hardcore" => PlayMode::Hardcore,
+                _ => return Err("--mode 必须是 normal 或 hardcore。"),
+            });
         } else {
             return Err("参数无效；请运行 arreat-app market lookup --help。");
         }
@@ -67,6 +86,10 @@ fn parse_args(args: Vec<OsString>) -> Result<Command, &'static str> {
     Ok(Command::Lookup {
         catalog: catalog.ok_or("缺少 --catalog。")?,
         item: item.ok_or("缺少 --item。")?,
+        market_scope: MarketScope {
+            season: season.unwrap_or(SeasonScope::NonSeason),
+            mode: mode.unwrap_or(PlayMode::Normal),
+        },
     })
 }
 
@@ -84,9 +107,13 @@ fn run(command: Command) -> ExitCode {
             print!("{MARKET_HELP}");
             ExitCode::SUCCESS
         }
-        Command::Lookup { catalog, item } => {
+        Command::Lookup {
+            catalog,
+            item,
+            market_scope,
+        } => {
             let result = Dd373CurrentAskLookup::from_catalog_path(catalog)
-                .and_then(|market| market.lookup(&item));
+                .and_then(|market| market.lookup(&item, market_scope));
             write_lookup_result(result, &mut io::stdout().lock(), &mut io::stderr().lock())
         }
     }
@@ -115,8 +142,17 @@ fn write_lookup_result(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use arreat_market::{Currency, CurrentAskStatus, ExclusionCounts, PriceType, Provider};
+
     fn args(values: &[&str]) -> Vec<OsString> {
         values.iter().map(OsString::from).collect()
+    }
+
+    fn parsed_scope(values: &[&str]) -> MarketScope {
+        match parse_args(args(values)).unwrap() {
+            Command::Lookup { market_scope, .. } => market_scope,
+            _ => panic!("expected lookup"),
+        }
     }
     #[test]
     fn old_commands_and_help_are_preserved() {
@@ -132,28 +168,14 @@ mod tests {
     }
     #[test]
     fn lookup_accepts_both_orders_but_no_extra_flags() {
-        assert!(matches!(
-            parse_args(args(&[
-                "market",
-                "lookup",
-                "--catalog",
-                "c",
-                "--item",
-                "base:r17"
-            ])),
-            Ok(Command::Lookup { .. })
-        ));
-        assert!(matches!(
-            parse_args(args(&[
-                "market",
-                "lookup",
-                "--item",
-                "base:r17",
-                "--catalog",
-                "c"
-            ])),
-            Ok(Command::Lookup { .. })
-        ));
+        assert_eq!(
+            parsed_scope(&["market", "lookup", "--catalog", "c", "--item", "base:r17"]),
+            MarketScope::default()
+        );
+        assert_eq!(
+            parsed_scope(&["market", "lookup", "--item", "base:r17", "--catalog", "c"]),
+            MarketScope::default()
+        );
         assert!(
             parse_args(args(&[
                 "market",
@@ -165,6 +187,166 @@ mod tests {
             ]))
             .is_err()
         );
+    }
+
+    #[test]
+    fn lookup_accepts_all_scope_choices_in_any_pair_order() {
+        let base = ["market", "lookup", "--catalog", "c", "--item", "base:r17"];
+        for (season_value, season) in [
+            ("non-season", SeasonScope::NonSeason),
+            ("latest", SeasonScope::Latest),
+        ] {
+            for (mode_value, mode) in [
+                ("normal", PlayMode::Normal),
+                ("hardcore", PlayMode::Hardcore),
+            ] {
+                let mut values = base.to_vec();
+                values.extend(["--season", season_value, "--mode", mode_value]);
+                assert_eq!(parsed_scope(&values), MarketScope { season, mode });
+
+                let reordered = [
+                    "market",
+                    "lookup",
+                    "--mode",
+                    mode_value,
+                    "--item",
+                    "base:r17",
+                    "--season",
+                    season_value,
+                    "--catalog",
+                    "c",
+                ];
+                assert_eq!(parsed_scope(&reordered), MarketScope { season, mode });
+            }
+        }
+    }
+
+    #[test]
+    fn lookup_rejects_invalid_duplicate_missing_and_non_utf8_values() {
+        for values in [
+            vec![
+                "market",
+                "lookup",
+                "--catalog",
+                "c",
+                "--item",
+                "base:r17",
+                "--season",
+                "old",
+            ],
+            vec![
+                "market",
+                "lookup",
+                "--catalog",
+                "c",
+                "--item",
+                "base:r17",
+                "--mode",
+                "softcore",
+            ],
+            vec![
+                "market",
+                "lookup",
+                "--catalog",
+                "c",
+                "--item",
+                "base:r17",
+                "--season",
+                "latest",
+                "--season",
+                "latest",
+            ],
+            vec![
+                "market",
+                "lookup",
+                "--catalog",
+                "c",
+                "--item",
+                "base:r17",
+                "--mode",
+                "normal",
+                "--mode",
+                "hardcore",
+            ],
+            vec!["market", "lookup", "--catalog", "c", "--item"],
+            vec![
+                "market",
+                "lookup",
+                "--catalog",
+                "c",
+                "--item",
+                "base:r17",
+                "--season",
+            ],
+        ] {
+            assert!(parse_args(args(&values)).is_err(), "accepted {values:?}");
+        }
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::ffi::OsStringExt;
+            let mut values = args(&[
+                "market",
+                "lookup",
+                "--catalog",
+                "c",
+                "--item",
+                "base:r17",
+                "--mode",
+            ]);
+            values.push(OsString::from_vec(vec![0xff]));
+            assert!(parse_args(values).is_err());
+        }
+    }
+
+    #[test]
+    fn help_documents_scope_values_and_defaults() {
+        for text in [
+            "--season <SEASON>",
+            "non-season",
+            "latest",
+            "--mode <MODE>",
+            "normal",
+            "hardcore",
+            "默认 non-season",
+            "默认 normal",
+        ] {
+            assert!(MARKET_HELP.contains(text));
+        }
+    }
+
+    #[test]
+    fn writer_emits_schema_two_scope_and_unavailable_status() {
+        let summary = CurrentAskSummary {
+            schema_version: 2,
+            item_id: CanonicalItemId::from_str("base:r17").unwrap(),
+            market_scope: MarketScope {
+                season: SeasonScope::Latest,
+                mode: PlayMode::Hardcore,
+            },
+            status: CurrentAskStatus::MarketScopeUnavailable,
+            price_type: PriceType::CurrentAsks,
+            provider: Provider::Dd373,
+            currency: Currency::CNY,
+            unit: None,
+            minimum_unit_ask: None,
+            median_unit_ask: None,
+            sample_count: 0,
+            listing_count: 0,
+            exclusions: ExclusionCounts::default(),
+            request_count: 4,
+            observed_at: "2023-11-14T22:13:20Z".to_owned(),
+        };
+        let mut stdout = Vec::new();
+        let mut stderr = Vec::new();
+        let exit = write_lookup_result(Ok(summary), &mut stdout, &mut stderr);
+        assert_eq!(exit, ExitCode::SUCCESS);
+        assert!(stderr.is_empty());
+        let output: serde_json::Value = serde_json::from_slice(&stdout).unwrap();
+        assert_eq!(output["schema_version"], 2);
+        assert_eq!(output["market_scope"]["season"], "latest");
+        assert_eq!(output["market_scope"]["mode"], "hardcore");
+        assert_eq!(output["status"], "market_scope_unavailable");
     }
 
     #[test]
