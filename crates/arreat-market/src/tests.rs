@@ -107,7 +107,7 @@ fn named_flow(family: Family) -> Vec<Value> {
             {"Name":"非赛季普通","Id":"legacy"}
         ]),
         Value::Array(children),
-        listing_page(json!([{"shopno":"one","title":title,"singleprice":"2.50","unit":"元/件"}])),
+        listing_page(json!([{"shopno":"one","title":title,"price":"2.50","singleprice":"bad"}])),
     ];
     values.extend((0..8).map(|_| listing_page(json!([]))));
     values
@@ -200,16 +200,53 @@ fn rune_flow_is_exact_private_stable_and_rate_limited() {
     )
     .unwrap();
     assert_eq!(summary.status, CurrentAskStatus::Resolved);
-    assert_eq!(summary.schema_version, 2);
+    assert_eq!(summary.schema_version, 3);
     assert_eq!(summary.market_scope, MarketScope::default());
     assert_eq!(summary.request_count, 6);
-    assert_eq!(summary.sample_count, 3);
-    assert_eq!(summary.listing_count, 4);
-    assert_eq!(summary.minimum_unit_ask.unwrap().to_string(), "1.20");
-    assert_eq!(summary.median_unit_ask.unwrap().to_string(), "3");
+    assert_eq!(summary.sample_count, 4);
+    assert_eq!(summary.listing_count, 5);
+    let Pricing::PerItem {
+        unit_price,
+        entry_price,
+        offers_at_minimum_unit_price,
+        offers_at_minimum_entry_price,
+    } = &summary.pricing
+    else {
+        panic!("rune pricing")
+    };
+    assert_eq!(unit_price.minimum.unwrap().to_string(), "1.00");
+    assert_eq!(unit_price.median.unwrap().to_string(), "1.00");
+    assert_eq!(entry_price.minimum.unwrap().to_string(), "2.00");
+    assert_eq!(entry_price.median.unwrap().to_string(), "7.50");
+    assert_eq!(
+        offers_at_minimum_unit_price,
+        &vec![
+            RuneOffer {
+                quantity_per_lot: 5,
+                lot_price: Decimal::from_str_exact("5.00").unwrap(),
+                available_lots: 2,
+                unit_price: Decimal::from_str_exact("1.00").unwrap(),
+            },
+            RuneOffer {
+                quantity_per_lot: 10,
+                lot_price: Decimal::from_str_exact("10.00").unwrap(),
+                available_lots: 3,
+                unit_price: Decimal::from_str_exact("1.00").unwrap(),
+            },
+        ]
+    );
+    assert_eq!(
+        offers_at_minimum_entry_price,
+        &vec![RuneOffer {
+            quantity_per_lot: 1,
+            lot_price: Decimal::from_str_exact("2.00").unwrap(),
+            available_lots: 4,
+            unit_price: Decimal::from_str_exact("2.00").unwrap(),
+        }]
+    );
     assert_eq!(summary.exclusions.privacy, 1);
     assert_eq!(summary.exclusions.duplicate_listing, 1);
-    assert_eq!(summary.exclusions.non_positive_amount, 1);
+    assert_eq!(summary.exclusions.invalid_offer, 1);
     assert_eq!(clock.sleeps, vec![Duration::from_millis(1100); 5]);
     let bytes = serde_json::to_vec(&summary).unwrap();
     assert_eq!(bytes, serde_json::to_vec(&summary).unwrap());
@@ -220,6 +257,9 @@ fn rune_flow_is_exact_private_stable_and_rate_limited() {
     assert!(text.contains("\"price_type\":\"current_asks\""));
     assert!(text.contains("\"market_scope\":{\"season\":\"non_season\",\"mode\":\"normal\"}"));
     assert!(text.contains("\"observed_at\":\"2023-11-14T22:13:25Z\""));
+    assert!(text.contains(
+        "\"quantity_per_lot\":5,\"lot_price\":\"5.00\",\"available_lots\":2,\"unit_price\":\"1.00\""
+    ));
 }
 
 #[test]
@@ -243,7 +283,10 @@ fn named_flows_query_nine_distinct_leaves_once_in_order() {
         )
         .unwrap();
         assert_eq!(summary.request_count, 14);
-        assert_eq!(summary.minimum_unit_ask.unwrap().to_string(), "2.50");
+        let Pricing::PerListing { listing_price } = summary.pricing else {
+            panic!("listing pricing")
+        };
+        assert_eq!(listing_price.minimum.unwrap().to_string(), "2.50");
         let mut expected = vec![
             "https://game.dd373.com/api/game/list".to_owned(),
             "https://game.dd373.com/Api/GameGoodsType/List?parentId=game".to_owned(),
@@ -323,7 +366,7 @@ fn every_supported_scope_and_latest_label_synonym_resolves_exactly() {
 }
 
 #[test]
-fn supported_scope_absence_is_a_zeroed_schema_two_summary() {
+fn supported_scope_absence_is_a_zeroed_schema_three_summary() {
     let item = item("base:r17");
     for (values, expected_requests) in [
         (
@@ -361,16 +404,14 @@ fn supported_scope_absence_is_a_zeroed_schema_two_summary() {
             &mut clock,
         )
         .unwrap();
-        assert_eq!(summary.schema_version, 2);
+        assert_eq!(summary.schema_version, 3);
         assert_eq!(summary.market_scope, MarketScope::default());
         assert_eq!(summary.status, CurrentAskStatus::MarketScopeUnavailable);
         assert_eq!(summary.request_count, expected_requests);
         assert_eq!(summary.sample_count, 0);
         assert_eq!(summary.listing_count, 0);
         assert_eq!(summary.exclusions, ExclusionCounts::default());
-        assert_eq!(summary.unit, None);
-        assert_eq!(summary.minimum_unit_ask, None);
-        assert_eq!(summary.median_unit_ask, None);
+        assert_eq!(summary.pricing, empty_pricing(Family::Rune));
         let serialized = serde_json::to_string(&summary).unwrap();
         assert!(serialized.contains("\"status\":\"market_scope_unavailable\""));
         for forbidden in ["title", "url", "seller", "contact", "shopno", "raw"] {
@@ -704,12 +745,92 @@ fn admission_rejects_unsupported_before_transport() {
 }
 
 #[test]
+fn unique_and_set_use_listing_price_and_ignore_unit_price_metadata() {
+    let catalog = catalog();
+    for (family, item_id, candidates, title) in [
+        (
+            Family::Unique,
+            "unique:alpha-crown",
+            &catalog.candidate_groups.unique,
+            "Alpha Crown",
+        ),
+        (
+            Family::Set,
+            "set-item:jade-band",
+            &catalog.candidate_groups.set,
+            "Jade Band",
+        ),
+    ] {
+        let odd = vec![
+            json!({"shopno":"1","title":title,"price":"1"}),
+            json!({"shopno":"2","title":title,"price":"3","unit":"","singleprice":"bad"}),
+            json!({"shopno":"3","title":title,"price":"5","unit":"元/件"}),
+        ];
+        let odd = summarize(
+            &item(item_id),
+            family,
+            candidates,
+            odd,
+            MarketScope::default(),
+            13,
+            0,
+        )
+        .unwrap();
+        assert_eq!(odd.status, CurrentAskStatus::Resolved);
+        assert_eq!(odd.sample_count, 3);
+        assert_eq!(odd.listing_count, 3);
+        assert_eq!(
+            odd.pricing,
+            Pricing::PerListing {
+                listing_price: AskStatistics {
+                    minimum: Some(Decimal::ONE),
+                    median: Some(Decimal::from(3)),
+                },
+            }
+        );
+
+        let even_with_invalid_prices = vec![
+            json!({"shopno":"1","title":title,"price":"1","unit":""}),
+            json!({"shopno":"2","title":title,"price":"3","singleprice":"bad"}),
+            json!({"shopno":"3","title":title,"price":"5"}),
+            json!({"shopno":"4","title":title,"price":"7","unit":"元/件","singleprice":null}),
+            json!({"shopno":"5","title":title}),
+            json!({"shopno":"6","title":title,"price":"bad"}),
+            json!({"shopno":"7","title":title,"price":0}),
+            json!({"shopno":"8","title":title,"price":-1}),
+        ];
+        let even = summarize(
+            &item(item_id),
+            family,
+            candidates,
+            even_with_invalid_prices,
+            MarketScope::default(),
+            13,
+            0,
+        )
+        .unwrap();
+        assert_eq!(even.sample_count, 4);
+        assert_eq!(even.listing_count, 8);
+        assert_eq!(even.exclusions.invalid_offer, 4);
+        assert_eq!(
+            even.pricing,
+            Pricing::PerListing {
+                listing_price: AskStatistics {
+                    minimum: Some(Decimal::ONE),
+                    median: Some(Decimal::from(4)),
+                },
+            }
+        );
+    }
+}
+
+#[test]
 fn named_matching_uses_all_catalog_layers_and_filters_before_price() {
     let candidates = &catalog().candidate_groups.unique;
     let records = vec![
-        json!({"shopno":"1","title":"Premium Alpha Crown","singleprice":"2","unit":"元/件"}),
-        json!({"shopno":"2","title":"阿尔法王冠","singleprice":"4","unit":"元/件"}),
-        json!({"shopno":"3","title":"皇冠别名","singleprice":"8","unit":"元/件"}),
+        json!({"shopno":"1","title":"Premium Alpha Crown","price":"2","singleprice":"bad"}),
+        json!({"shopno":"2","title":"阿尔法王冠","price":"4"}),
+        json!({"shopno":"3","title":"皇冠别名","price":"8","unit":""}),
         json!({"shopno":"4","title":"Alpha Crown Red Moon","singleprice":"bad","unit":""}),
         json!({"shopno":"5","title":"Unrelated","singleprice":"bad","unit":""}),
         json!({"shopno":"6","title":"微信123456","singleprice":"bad","unit":""}),
@@ -725,94 +846,376 @@ fn named_matching_uses_all_catalog_layers_and_filters_before_price() {
     )
     .unwrap();
     assert_eq!(result.sample_count, 3);
-    assert_eq!(result.median_unit_ask.unwrap(), Decimal::from(4));
+    assert!(
+        matches!(result.pricing, Pricing::PerListing { listing_price } if listing_price.median == Some(Decimal::from(4)))
+    );
     assert_eq!(result.exclusions.multi_item, 1);
     assert_eq!(result.exclusions.unmatched_item, 1);
     assert_eq!(result.exclusions.privacy, 1);
 }
 
 #[test]
-fn even_median_is_exact_and_empty_is_success() {
-    let asks = vec![
-        json!({"shopno":"1","title":"x","singleprice":"1.1","unit":"u"}),
-        json!({"shopno":"2","title":"x","singleprice":2.2,"unit":"u"}),
+fn rune_statistics_cover_odd_and_even_unit_and_entry_medians() {
+    let odd_asks = vec![
+        json!({"shopno":"1","title":"x","amount":1,"price":"1","number":1,"singleprice":"1"}),
+        json!({"shopno":"2","title":"x","amount":2,"price":"4","number":2,"singleprice":"2"}),
+        json!({"shopno":"3","title":"x","amount":3,"price":"9","number":3,"singleprice":"3"}),
+    ];
+    let odd = summarize(
+        &item("base:r17"),
+        Family::Rune,
+        &[],
+        odd_asks.clone(),
+        MarketScope::default(),
+        5,
+        0,
+    )
+    .unwrap();
+    let Pricing::PerItem {
+        unit_price,
+        entry_price,
+        ..
+    } = odd.pricing
+    else {
+        panic!("rune pricing")
+    };
+    assert_eq!(unit_price.median, Some(Decimal::from(2)));
+    assert_eq!(entry_price.median, Some(Decimal::from(4)));
+
+    let mut even_asks = odd_asks;
+    even_asks.push(
+        json!({"shopno":"4","title":"x","amount":4,"price":"16","number":4,"singleprice":"4"}),
+    );
+    let even = summarize(
+        &item("base:r17"),
+        Family::Rune,
+        &[],
+        even_asks,
+        MarketScope::default(),
+        5,
+        0,
+    )
+    .unwrap();
+    let Pricing::PerItem {
+        unit_price,
+        entry_price,
+        ..
+    } = even.pricing
+    else {
+        panic!("rune pricing")
+    };
+    assert_eq!(
+        unit_price.median,
+        Some(Decimal::from_str_exact("2.5").unwrap())
+    );
+    assert_eq!(
+        entry_price.median,
+        Some(Decimal::from_str_exact("6.5").unwrap())
+    );
+}
+
+#[test]
+fn rune_invalid_fields_do_not_fallback_and_ratio_contradiction_fails_closed() {
+    let cases = [
+        ("missing amount", "amount", None),
+        ("malformed amount", "amount", Some(json!("bad"))),
+        ("zero amount", "amount", Some(json!(0))),
+        ("negative amount", "amount", Some(json!(-1))),
+        ("non-integral amount", "amount", Some(json!(1.5))),
+        (
+            "out-of-u64 amount",
+            "amount",
+            Some(json!("18446744073709551616")),
+        ),
+        ("missing price", "price", None),
+        ("malformed price", "price", Some(json!("bad"))),
+        ("zero price", "price", Some(json!(0))),
+        ("negative price", "price", Some(json!(-1))),
+        ("missing number", "number", None),
+        ("malformed number", "number", Some(json!("bad"))),
+        ("zero number", "number", Some(json!(0))),
+        ("negative number", "number", Some(json!(-1))),
+        ("non-integral number", "number", Some(json!(1.5))),
+        (
+            "out-of-u64 number",
+            "number",
+            Some(json!("18446744073709551616")),
+        ),
+        ("missing singleprice", "singleprice", None),
+        ("malformed singleprice", "singleprice", Some(json!("bad"))),
+        ("zero singleprice", "singleprice", Some(json!(0))),
+        ("negative singleprice", "singleprice", Some(json!(-1))),
+    ];
+    for (name, field, value) in cases {
+        let mut record = json!({
+            "shopno":"1",
+            "title":"x",
+            "amount":1,
+            "price":1,
+            "number":1,
+            "singleprice":1
+        });
+        let object = record.as_object_mut().unwrap();
+        if let Some(value) = value {
+            object.insert(field.to_owned(), value);
+        } else {
+            object.remove(field);
+        }
+        let result = summarize(
+            &item("base:r17"),
+            Family::Rune,
+            &[],
+            vec![record],
+            MarketScope::default(),
+            5,
+            0,
+        )
+        .unwrap();
+        assert_eq!(result.exclusions.invalid_offer, 1, "{name}");
+        assert_eq!(result.listing_count, 1, "{name}");
+        assert_eq!(result.sample_count, 0, "{name}");
+        assert_eq!(
+            result.status,
+            CurrentAskStatus::NoComparableCurrentAsks,
+            "{name}"
+        );
+        assert_eq!(result.pricing, empty_pricing(Family::Rune), "{name}");
+    }
+
+    let all_invalid = json!({"shopno":"1","title":"x"});
+    let all_invalid = summarize(
+        &item("base:r17"),
+        Family::Rune,
+        &[],
+        vec![all_invalid],
+        MarketScope::default(),
+        5,
+        0,
+    )
+    .unwrap();
+    assert_eq!(all_invalid.exclusions.invalid_offer, 1);
+
+    let contradiction = vec![json!({
+        "shopno":"1",
+        "title":"x",
+        "amount":2,
+        "price":4,
+        "number":1,
+        "singleprice":"2.01"
+    })];
+    assert!(matches!(
+        summarize(
+            &item("base:r17"),
+            Family::Rune,
+            &[],
+            contradiction,
+            MarketScope::default(),
+            5,
+            0
+        ),
+        Err(MarketError::OfferRatio)
+    ));
+
+    let grouped_low_unit_price = vec![json!({
+        "shopno":"2",
+        "title":"x",
+        "amount":10000,
+        "price":"0.01",
+        "number":1,
+        "singleprice":"0.000002"
+    })];
+    assert!(matches!(
+        summarize(
+            &item("base:r17"),
+            Family::Rune,
+            &[],
+            grouped_low_unit_price,
+            MarketScope::default(),
+            5,
+            0
+        ),
+        Err(MarketError::OfferRatio)
+    ));
+}
+
+#[test]
+fn ratio_tolerance_does_not_define_price_ties() {
+    let offers = vec![
+        json!({"shopno":"1","title":"x","amount":1,"price":"1.0000005","number":2,"singleprice":"1"}),
+        json!({"shopno":"2","title":"x","amount":1,"price":"1","number":3,"singleprice":"1.0000005"}),
     ];
     let result = summarize(
         &item("base:r17"),
         Family::Rune,
         &[],
-        asks,
+        offers,
         MarketScope::default(),
         5,
         0,
     )
     .unwrap();
+    let Pricing::PerItem {
+        unit_price,
+        entry_price,
+        offers_at_minimum_unit_price,
+        offers_at_minimum_entry_price,
+    } = result.pricing
+    else {
+        panic!("rune pricing")
+    };
+    assert_eq!(unit_price.minimum, Some(Decimal::ONE));
+    assert_eq!(entry_price.minimum, Some(Decimal::ONE));
+    assert_eq!(offers_at_minimum_unit_price.len(), 1);
     assert_eq!(
-        result.median_unit_ask.unwrap(),
-        Decimal::from_str_exact("1.65").unwrap()
+        offers_at_minimum_unit_price[0].lot_price,
+        Decimal::from_str_exact("1.0000005").unwrap()
     );
-    let empty = summarize(
+    assert_eq!(offers_at_minimum_entry_price.len(), 1);
+    assert_eq!(
+        offers_at_minimum_entry_price[0].unit_price,
+        Decimal::from_str_exact("1.0000005").unwrap()
+    );
+
+    let tiny_offers = vec![
+        json!({"shopno":"3","title":"x","amount":10,"price":"5","number":1,"singleprice":"0.5"}),
+        json!({"shopno":"4","title":"x","amount":10,"price":"5.000007","number":1,"singleprice":"0.5000007"}),
+    ];
+    let result = summarize(
         &item("base:r17"),
         Family::Rune,
         &[],
-        vec![],
+        tiny_offers,
         MarketScope::default(),
         5,
         0,
     )
     .unwrap();
-    assert_eq!(empty.status, CurrentAskStatus::NoComparableCurrentAsks);
-    assert_eq!(empty.unit, None);
-    assert_eq!(empty.minimum_unit_ask, None);
-    assert_eq!(empty.sample_count, 0);
+    let Pricing::PerItem {
+        unit_price,
+        offers_at_minimum_unit_price,
+        ..
+    } = result.pricing
+    else {
+        panic!("rune pricing")
+    };
+    assert_eq!(
+        unit_price.minimum,
+        Some(Decimal::from_str_exact("0.5").unwrap())
+    );
+    assert_eq!(offers_at_minimum_unit_price.len(), 1);
+    assert_eq!(
+        offers_at_minimum_unit_price[0].unit_price,
+        Decimal::from_str_exact("0.5").unwrap()
+    );
 }
 
 #[test]
-fn price_and_unit_contract_fails_closed() {
-    for price in [json!("bad"), json!(null), json!({}), json!("NaN")] {
-        let record = json!({"shopno":"1","title":"x","singleprice":price,"unit":"u"});
-        assert!(matches!(
-            summarize(
-                &item("base:r17"),
-                Family::Rune,
-                &[],
-                vec![record],
-                MarketScope::default(),
-                5,
-                0
-            ),
-            Err(MarketError::Price)
-        ));
-    }
-    let missing_price = json!({"shopno":"1","title":"x","unit":"u"});
-    assert!(matches!(
-        summarize(
-            &item("base:r17"),
-            Family::Rune,
-            &[],
-            vec![missing_price],
-            MarketScope::default(),
-            5,
-            0
+fn non_resolved_results_preserve_family_pricing_variants() {
+    let catalog = catalog();
+    let cases = [
+        (Family::Rune, "base:r17", &[][..], "x"),
+        (
+            Family::Unique,
+            "unique:alpha-crown",
+            &catalog.candidate_groups.unique[..],
+            "Alpha Crown",
         ),
-        Err(MarketError::Price)
-    ));
-    let mixed = vec![
-        json!({"shopno":"1","title":"x","singleprice":"1","unit":"a"}),
-        json!({"shopno":"2","title":"x","singleprice":"2","unit":"b"}),
+        (
+            Family::Set,
+            "set-item:jade-band",
+            &catalog.candidate_groups.set[..],
+            "Jade Band",
+        ),
     ];
-    assert!(matches!(
-        summarize(
-            &item("base:r17"),
-            Family::Rune,
-            &[],
-            mixed,
+    for (family, item_id, candidates, title) in cases {
+        let empty = summarize(
+            &item(item_id),
+            family,
+            candidates,
+            vec![],
             MarketScope::default(),
             5,
-            0
-        ),
-        Err(MarketError::Unit)
-    ));
+            0,
+        )
+        .unwrap();
+        assert_eq!(empty.status, CurrentAskStatus::NoComparableCurrentAsks);
+        assert_eq!(empty.listing_count, 0);
+        assert_eq!(empty.sample_count, 0);
+        assert_eq!(empty.pricing, empty_pricing(family));
+
+        let invalid_record = json!({"shopno":"1","title":title});
+        let invalid = summarize(
+            &item(item_id),
+            family,
+            candidates,
+            vec![invalid_record],
+            MarketScope::default(),
+            5,
+            0,
+        )
+        .unwrap();
+        assert_eq!(invalid.status, CurrentAskStatus::NoComparableCurrentAsks);
+        assert_eq!(invalid.listing_count, 1);
+        assert_eq!(invalid.sample_count, 0);
+        assert_eq!(invalid.exclusions.invalid_offer, 1);
+        assert_eq!(invalid.pricing, empty_pricing(family));
+
+        let unavailable = unavailable_summary(&item(item_id), family, MarketScope::default(), 3, 0);
+        assert_eq!(unavailable.status, CurrentAskStatus::MarketScopeUnavailable);
+        assert_eq!(unavailable.listing_count, 0);
+        assert_eq!(unavailable.sample_count, 0);
+        assert_eq!(unavailable.pricing, empty_pricing(family));
+    }
+}
+
+#[test]
+fn even_medians_are_overflow_safe_for_listing_and_item_prices() {
+    let catalog = catalog();
+    let max = Decimal::MAX.to_string();
+    let listing = summarize(
+        &item("unique:alpha-crown"),
+        Family::Unique,
+        &catalog.candidate_groups.unique,
+        vec![
+            json!({"shopno":"1","title":"Alpha Crown","price":max}),
+            json!({"shopno":"2","title":"Alpha Crown","price":max}),
+        ],
+        MarketScope::default(),
+        13,
+        0,
+    )
+    .unwrap();
+    let Pricing::PerListing { listing_price } = listing.pricing else {
+        panic!("listing pricing")
+    };
+    assert_eq!(listing_price.median, Some(Decimal::MAX));
+
+    let lower = Decimal::MAX - Decimal::from(2);
+    let upper = Decimal::MAX;
+    let item_summary = summarize(
+        &item("base:r17"),
+        Family::Rune,
+        &[],
+        vec![
+            json!({"shopno":"1","title":"x","amount":1,"price":lower.to_string(),"number":1,"singleprice":lower.to_string()}),
+            json!({"shopno":"2","title":"x","amount":1,"price":upper.to_string(),"number":1,"singleprice":upper.to_string()}),
+        ],
+        MarketScope::default(),
+        5,
+        0,
+    )
+    .unwrap();
+    let Pricing::PerItem {
+        unit_price,
+        entry_price,
+        ..
+    } = item_summary.pricing
+    else {
+        panic!("item pricing")
+    };
+    let expected = Decimal::MAX - Decimal::ONE;
+    assert_eq!(unit_price.median, Some(expected));
+    assert_eq!(entry_price.median, Some(expected));
 }
 
 #[test]
@@ -991,8 +1394,9 @@ fn bounded_reader_accepts_exact_limit_and_rejects_one_more_byte() {
 #[test]
 fn numeric_response_preserves_high_precision_lexeme() {
     const PRICE: &str = "0.1234567890123456789012345678";
+    const LOT_PRICE: &str = "0.2469135780246913578024691356";
     let body = format!(
-        r#"{{"StatusCode":0,"StatusData":{{"ResultCode":0,"ResultData":[{{"shopno":"one","title":"x","singleprice":{PRICE},"unit":"元/件"}}]}}}}"#
+        r#"{{"StatusCode":0,"StatusData":{{"ResultCode":0,"ResultData":[{{"shopno":"one","title":"x","amount":2,"price":{LOT_PRICE},"number":3,"singleprice":{PRICE}}}]}}}}"#
     );
     let mut transport = FakeTransport {
         responses: VecDeque::from([Ok(RawResponse {
@@ -1023,8 +1427,16 @@ fn numeric_response_preserves_high_precision_lexeme() {
         0,
     )
     .unwrap();
-    assert_eq!(summary.minimum_unit_ask.unwrap().to_string(), PRICE);
-    assert_eq!(summary.median_unit_ask.unwrap().to_string(), PRICE);
+    let Pricing::PerItem {
+        unit_price,
+        entry_price,
+        ..
+    } = summary.pricing
+    else {
+        panic!("rune pricing")
+    };
+    assert_eq!(unit_price.minimum.unwrap().to_string(), PRICE);
+    assert_eq!(entry_price.minimum.unwrap().to_string(), LOT_PRICE);
 }
 
 #[test]

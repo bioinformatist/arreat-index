@@ -12,3 +12,8 @@
 - An unavailable supported market scope and a scope with no comparable current
   asks are market states. Malformed or ambiguous provider taxonomy is a
   provider failure.
+- Arreat Index is read-only market intelligence. It may retrieve current asks
+  and produce statistics or analysis, but it must never perform or automate a
+  transaction: no posting or editing listings, placing orders, purchasing,
+  bargaining, contacting sellers, payment, inventory reservation, or other
+  provider-account mutation.

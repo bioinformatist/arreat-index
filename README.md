@@ -32,6 +32,11 @@ cargo run -q -p arreat-app -- market lookup --catalog .cache/name-catalog.json -
 `固定专名`标识的是一件唯一的 `暗金` 或 `套装` 物品，但不固定具体属性值。
 `base:r01` 至 `base:r33` 是符文内部 ID 约定，不意味着该范围即代表支持 `底材`。
 不支持符文之语、普通底材、孔数、随机词缀、自由词缀匹配或捆绑物品。JSON 只汇总同一观察时刻的活跃卖家当前挂单；它不是成交价、历史、市场价值、公允价格或购买建议。
+符文采用 schema 3 的 `Per-item` 模式，返回完整匿名 lot tuple（`quantity_per_lot`、
+`lot_price`、`available_lots`、`unit_price`）。最低单价与最低入场价分别保留所有不同的
+并列最低 tuple，绝不跨挂单组合字段；
+暗金和套装使用 `Per-listing` 模式返回挂牌价格统计。模块只查询、聚合与分析当前挂单，不会执行或自动化
+任何交易行为。
 模块不输出或保存标题、卖家、联系方式和原始响应。
 
 进一步阅读：

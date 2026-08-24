@@ -16,11 +16,12 @@
     {"Name":"31号符文","Id":"r31"},{"Name":"32号符文","Id":"r32"},{"Name":"33号符文","Id":"r33"}
   ],
   {"StatusCode":"0","StatusData":{"ResultCode":0,"ResultData":[
-    {"shopno":"one","title":"17号符文","singleprice":"1.20","unit":"元/个"},
-    {"shopno":"two","title":"17号符文","singleprice":3,"unit":"元/个"},
-    {"shopno":"three","title":"17号符文","singleprice":"5.40","unit":"元/个"},
-    {"shopno":"three","title":"重复","singleprice":"999","unit":"元/个"},
-    {"shopno":"private","title":"联系QQ123456","singleprice":"0.01","unit":"元/个"},
-    {"shopno":"zero","title":"17号符文","singleprice":"0","unit":"元/个"}
+    {"shopno":"one","title":"17号符文","amount":"10","price":"10.00","number":"3","singleprice":"1.00"},
+    {"shopno":"two","title":"17号符文","amount":1,"price":"2.00","number":4,"singleprice":"2.00"},
+    {"shopno":"three","title":"17号符文","amount":"5","price":"5.00","number":"2","singleprice":"1.00"},
+    {"shopno":"three","title":"重复","amount":"1","price":"999","number":"1","singleprice":"999"},
+    {"shopno":"four","title":"17号符文","amount":10,"price":"10.00","number":3,"singleprice":"1.00"},
+    {"shopno":"private","title":"联系QQ123456","amount":"100","price":"1","number":"1","singleprice":"0.01"},
+    {"shopno":"invalid","title":"17号符文","amount":"10","price":"10.00","singleprice":"1.00"}
   ]}}
 ]

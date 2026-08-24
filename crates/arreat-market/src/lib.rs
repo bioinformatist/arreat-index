@@ -13,6 +13,7 @@ use arreat_data::{CanonicalItemId, ItemKind};
 use regex::{Regex, RegexBuilder};
 use reqwest::{Url, blocking::Client, header::CONTENT_TYPE, redirect::Policy};
 use rust_decimal::Decimal;
+use rust_decimal::prelude::ToPrimitive;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use thiserror::Error;
@@ -24,6 +25,8 @@ const REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
 const REQUEST_INTERVAL_MS: u64 = 1_100;
 const MAX_REQUESTS: usize = 16;
 const MAX_BODY_BYTES: usize = 2 * 1024 * 1024;
+const CURRENCY: &str = "CNY";
+const RATIO_TOLERANCE: Decimal = Decimal::from_parts(1, 0, 0, false, 6);
 
 /// A successful, aggregate-only observation of current seller asks.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -34,12 +37,8 @@ pub struct CurrentAskSummary {
     pub status: CurrentAskStatus,
     pub price_type: PriceType,
     pub provider: Provider,
-    pub currency: Currency,
-    pub unit: Option<String>,
-    #[serde(with = "rust_decimal::serde::str_option")]
-    pub minimum_unit_ask: Option<Decimal>,
-    #[serde(with = "rust_decimal::serde::str_option")]
-    pub median_unit_ask: Option<Decimal>,
+    pub currency: &'static str,
+    pub pricing: Pricing,
     pub sample_count: usize,
     pub listing_count: usize,
     pub exclusions: ExclusionCounts,
@@ -96,9 +95,36 @@ pub enum Provider {
     Dd373,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(tag = "ask_basis", rename_all = "snake_case")]
+pub enum Pricing {
+    PerItem {
+        unit_price: AskStatistics,
+        entry_price: AskStatistics,
+        offers_at_minimum_unit_price: Vec<RuneOffer>,
+        offers_at_minimum_entry_price: Vec<RuneOffer>,
+    },
+    PerListing {
+        listing_price: AskStatistics,
+    },
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-pub enum Currency {
-    CNY,
+pub struct AskStatistics {
+    #[serde(with = "rust_decimal::serde::str_option")]
+    pub minimum: Option<Decimal>,
+    #[serde(with = "rust_decimal::serde::str_option")]
+    pub median: Option<Decimal>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct RuneOffer {
+    pub quantity_per_lot: u64,
+    #[serde(with = "rust_decimal::serde::str")]
+    pub lot_price: Decimal,
+    pub available_lots: u64,
+    #[serde(with = "rust_decimal::serde::str")]
+    pub unit_price: Decimal,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
@@ -107,7 +133,7 @@ pub struct ExclusionCounts {
     pub multi_item: usize,
     pub unmatched_item: usize,
     pub duplicate_listing: usize,
-    pub non_positive_amount: usize,
+    pub invalid_offer: usize,
 }
 
 /// Bounded errors: no response bodies, listing titles, URLs, or seller details.
@@ -135,8 +161,8 @@ pub enum MarketError {
     Taxonomy,
     #[error("当前挂单价格字段无效")]
     Price,
-    #[error("当前挂单单位为空或不一致")]
-    Unit,
+    #[error("上游符文挂单价格关系矛盾")]
+    OfferRatio,
     #[error("单次查询超过 16 个请求")]
     RequestLimit,
 }
@@ -462,6 +488,7 @@ fn lookup_with(
     let Some(area_id) = area_id(&areas, market_scope.season)? else {
         return Ok(unavailable_summary(
             item,
+            family,
             market_scope,
             session.requests,
             session.clock.now_millis(),
@@ -473,6 +500,7 @@ fn lookup_with(
     let Some(server_id) = server_id(&servers, market_scope)? else {
         return Ok(unavailable_summary(
             item,
+            family,
             market_scope,
             session.requests,
             session.clock.now_millis(),
@@ -815,9 +843,9 @@ fn summarize(
     let privacy = privacy_regexes();
     let mut exclusions = ExclusionCounts::default();
     let mut seen = BTreeSet::new();
-    let mut asks = Vec::new();
+    let mut rune_offers = Vec::new();
+    let mut listing_prices = Vec::new();
     let mut listing_count = 0;
-    let mut unit: Option<String> = None;
     for record in records {
         let object = record.as_object().ok_or(MarketError::InvalidJson)?;
         let title = object
@@ -858,51 +886,26 @@ fn summarize(
             continue;
         }
         listing_count += 1;
-        let amount = parse_decimal(object.get("singleprice").ok_or(MarketError::Price)?)?;
-        if amount <= Decimal::ZERO {
-            exclusions.non_positive_amount += 1;
-            continue;
+        match family {
+            Family::Rune => match parse_rune_offer(object)? {
+                Some(offer) => rune_offers.push(offer),
+                None => exclusions.invalid_offer += 1,
+            },
+            Family::Unique | Family::Set => match positive_decimal(object.get("price")) {
+                Some(price) => listing_prices.push(price),
+                None => exclusions.invalid_offer += 1,
+            },
         }
-        let current_unit = object
-            .get("unit")
-            .and_then(Value::as_str)
-            .map(str::trim)
-            .filter(|s| !s.is_empty())
-            .ok_or(MarketError::Unit)?;
-        if let Some(expected) = &unit {
-            if expected != current_unit {
-                return Err(MarketError::Unit);
-            }
-        } else {
-            unit = Some(current_unit.to_owned());
-        }
-        asks.push(amount);
     }
-    asks.sort();
-    let sample_count = asks.len();
-    let (status, minimum, median, unit) = if asks.is_empty() {
-        (CurrentAskStatus::NoComparableCurrentAsks, None, None, None)
-    } else {
-        let middle = asks.len() / 2;
-        let median = if asks.len() % 2 == 1 {
-            asks[middle]
-        } else {
-            (asks[middle - 1] + asks[middle]) / Decimal::from(2)
-        };
-        (
-            CurrentAskStatus::Resolved,
-            Some(asks[0]),
-            Some(median),
-            unit,
-        )
+    let (status, pricing, sample_count) = match family {
+        Family::Rune => summarize_rune_offers(rune_offers),
+        Family::Unique | Family::Set => summarize_listing_prices(listing_prices),
     };
     Ok(summary(
         item,
         market_scope,
         status,
-        unit,
-        minimum,
-        median,
+        pricing,
         sample_count,
         listing_count,
         exclusions,
@@ -913,6 +916,7 @@ fn summarize(
 
 fn unavailable_summary(
     item: &CanonicalItemId,
+    family: Family,
     market_scope: MarketScope,
     request_count: usize,
     observed_ms: u64,
@@ -921,9 +925,7 @@ fn unavailable_summary(
         item,
         market_scope,
         CurrentAskStatus::MarketScopeUnavailable,
-        None,
-        None,
-        None,
+        empty_pricing(family),
         0,
         0,
         ExclusionCounts::default(),
@@ -937,9 +939,7 @@ fn summary(
     item: &CanonicalItemId,
     market_scope: MarketScope,
     status: CurrentAskStatus,
-    unit: Option<String>,
-    minimum_unit_ask: Option<Decimal>,
-    median_unit_ask: Option<Decimal>,
+    pricing: Pricing,
     sample_count: usize,
     listing_count: usize,
     exclusions: ExclusionCounts,
@@ -947,22 +947,160 @@ fn summary(
     observed_ms: u64,
 ) -> CurrentAskSummary {
     CurrentAskSummary {
-        schema_version: 2,
+        schema_version: 3,
         item_id: item.clone(),
         market_scope,
         status,
         price_type: PriceType::CurrentAsks,
         provider: Provider::Dd373,
-        currency: Currency::CNY,
-        unit,
-        minimum_unit_ask,
-        median_unit_ask,
+        currency: CURRENCY,
+        pricing,
         sample_count,
         listing_count,
         exclusions,
         request_count,
         observed_at: rfc3339(observed_ms / 1000),
     }
+}
+
+fn empty_statistics() -> AskStatistics {
+    AskStatistics {
+        minimum: None,
+        median: None,
+    }
+}
+
+fn empty_pricing(family: Family) -> Pricing {
+    match family {
+        Family::Rune => Pricing::PerItem {
+            unit_price: empty_statistics(),
+            entry_price: empty_statistics(),
+            offers_at_minimum_unit_price: Vec::new(),
+            offers_at_minimum_entry_price: Vec::new(),
+        },
+        Family::Unique | Family::Set => Pricing::PerListing {
+            listing_price: empty_statistics(),
+        },
+    }
+}
+
+fn positive_decimal(value: Option<&Value>) -> Option<Decimal> {
+    parse_decimal(value?)
+        .ok()
+        .filter(|value| *value > Decimal::ZERO)
+}
+
+fn positive_u64(value: Option<&Value>) -> Option<u64> {
+    let value = positive_decimal(value)?;
+    if !value.fract().is_zero() {
+        return None;
+    }
+    value.to_u64().filter(|value| *value > 0)
+}
+
+fn parse_rune_offer(
+    object: &serde_json::Map<String, Value>,
+) -> Result<Option<RuneOffer>, MarketError> {
+    let Some(lot_price) = positive_decimal(object.get("price")) else {
+        return Ok(None);
+    };
+    let Some(unit_price) = positive_decimal(object.get("singleprice")) else {
+        return Ok(None);
+    };
+    let Some(quantity_per_lot) = positive_u64(object.get("amount")) else {
+        return Ok(None);
+    };
+    let Some(available_lots) = positive_u64(object.get("number")) else {
+        return Ok(None);
+    };
+    let calculated = lot_price / Decimal::from(quantity_per_lot);
+    let denominator = calculated.abs().max(unit_price.abs());
+    if (calculated - unit_price).abs() > RATIO_TOLERANCE * denominator {
+        return Err(MarketError::OfferRatio);
+    }
+    Ok(Some(RuneOffer {
+        quantity_per_lot,
+        lot_price,
+        available_lots,
+        unit_price,
+    }))
+}
+
+fn statistics(values: &mut [Decimal]) -> Option<AskStatistics> {
+    if values.is_empty() {
+        return None;
+    }
+    values.sort();
+    let middle = values.len() / 2;
+    let median = if values.len() % 2 == 1 {
+        values[middle]
+    } else {
+        let lower = values[middle - 1];
+        let upper = values[middle];
+        lower + (upper - lower) / Decimal::from(2)
+    };
+    Some(AskStatistics {
+        minimum: Some(values[0]),
+        median: Some(median),
+    })
+}
+
+fn summarize_listing_prices(mut prices: Vec<Decimal>) -> (CurrentAskStatus, Pricing, usize) {
+    let sample_count = prices.len();
+    let listing_price = statistics(&mut prices).unwrap_or_else(empty_statistics);
+    let status = if sample_count == 0 {
+        CurrentAskStatus::NoComparableCurrentAsks
+    } else {
+        CurrentAskStatus::Resolved
+    };
+    (status, Pricing::PerListing { listing_price }, sample_count)
+}
+
+fn offer_order(offer: &RuneOffer) -> (Decimal, Decimal, u64, u64) {
+    (
+        offer.unit_price,
+        offer.lot_price,
+        offer.quantity_per_lot,
+        offer.available_lots,
+    )
+}
+
+fn summarize_rune_offers(mut offers: Vec<RuneOffer>) -> (CurrentAskStatus, Pricing, usize) {
+    let sample_count = offers.len();
+    if offers.is_empty() {
+        return (
+            CurrentAskStatus::NoComparableCurrentAsks,
+            empty_pricing(Family::Rune),
+            0,
+        );
+    }
+    let mut units: Vec<_> = offers.iter().map(|offer| offer.unit_price).collect();
+    let mut entries: Vec<_> = offers.iter().map(|offer| offer.lot_price).collect();
+    let unit_price = statistics(&mut units).unwrap();
+    let entry_price = statistics(&mut entries).unwrap();
+    offers.sort_by_key(offer_order);
+    let mut minimum_unit: Vec<_> = offers
+        .iter()
+        .copied()
+        .filter(|offer| Some(offer.unit_price) == unit_price.minimum)
+        .collect();
+    let mut minimum_entry: Vec<_> = offers
+        .iter()
+        .copied()
+        .filter(|offer| Some(offer.lot_price) == entry_price.minimum)
+        .collect();
+    minimum_unit.dedup();
+    minimum_entry.dedup();
+    (
+        CurrentAskStatus::Resolved,
+        Pricing::PerItem {
+            unit_price,
+            entry_price,
+            offers_at_minimum_unit_price: minimum_unit,
+            offers_at_minimum_entry_price: minimum_entry,
+        },
+        sample_count,
+    )
 }
 
 fn parse_decimal(value: &Value) -> Result<Decimal, MarketError> {

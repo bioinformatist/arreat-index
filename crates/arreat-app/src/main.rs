@@ -142,7 +142,9 @@ fn write_lookup_result(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use arreat_market::{Currency, CurrentAskStatus, ExclusionCounts, PriceType, Provider};
+    use arreat_market::{
+        AskStatistics, CurrentAskStatus, ExclusionCounts, PriceType, Pricing, Provider,
+    };
 
     fn args(values: &[&str]) -> Vec<OsString> {
         values.iter().map(OsString::from).collect()
@@ -316,9 +318,9 @@ mod tests {
     }
 
     #[test]
-    fn writer_emits_schema_two_scope_and_unavailable_status() {
+    fn writer_emits_schema_three_scope_and_unavailable_status() {
         let summary = CurrentAskSummary {
-            schema_version: 2,
+            schema_version: 3,
             item_id: CanonicalItemId::from_str("base:r17").unwrap(),
             market_scope: MarketScope {
                 season: SeasonScope::Latest,
@@ -327,10 +329,19 @@ mod tests {
             status: CurrentAskStatus::MarketScopeUnavailable,
             price_type: PriceType::CurrentAsks,
             provider: Provider::Dd373,
-            currency: Currency::CNY,
-            unit: None,
-            minimum_unit_ask: None,
-            median_unit_ask: None,
+            currency: "CNY",
+            pricing: Pricing::PerItem {
+                unit_price: AskStatistics {
+                    minimum: None,
+                    median: None,
+                },
+                entry_price: AskStatistics {
+                    minimum: None,
+                    median: None,
+                },
+                offers_at_minimum_unit_price: vec![],
+                offers_at_minimum_entry_price: vec![],
+            },
             sample_count: 0,
             listing_count: 0,
             exclusions: ExclusionCounts::default(),
@@ -343,10 +354,45 @@ mod tests {
         assert_eq!(exit, ExitCode::SUCCESS);
         assert!(stderr.is_empty());
         let output: serde_json::Value = serde_json::from_slice(&stdout).unwrap();
-        assert_eq!(output["schema_version"], 2);
-        assert_eq!(output["market_scope"]["season"], "latest");
-        assert_eq!(output["market_scope"]["mode"], "hardcore");
-        assert_eq!(output["status"], "market_scope_unavailable");
+        assert_eq!(
+            output,
+            serde_json::json!({
+              "schema_version": 3,
+              "item_id": "base:r17",
+              "market_scope": {
+                "season": "latest",
+                "mode": "hardcore"
+              },
+              "status": "market_scope_unavailable",
+              "price_type": "current_asks",
+              "provider": "dd373",
+              "currency": "CNY",
+              "pricing": {
+                "ask_basis": "per_item",
+                "unit_price": {
+                  "minimum": null,
+                  "median": null
+                },
+                "entry_price": {
+                  "minimum": null,
+                  "median": null
+                },
+                "offers_at_minimum_unit_price": [],
+                "offers_at_minimum_entry_price": []
+              },
+              "sample_count": 0,
+              "listing_count": 0,
+              "exclusions": {
+                "privacy": 0,
+                "multi_item": 0,
+                "unmatched_item": 0,
+                "duplicate_listing": 0,
+                "invalid_offer": 0
+              },
+              "request_count": 4,
+              "observed_at": "2023-11-14T22:13:20Z"
+            })
+        );
     }
 
     #[test]
