@@ -1,0 +1,134 @@
+{
+  "captured_at": "2026-08-23T11:16:18Z",
+  "manifest_version": 1,
+  "minimum_start_interval_ms": 1100,
+  "privacy_exclusion_count": 0,
+  "raw_responses_retained": false,
+  "request_count": 13,
+  "requests": [
+    {
+      "bytes": 50832,
+      "content_type": "text/html; charset=utf-8",
+      "http_status": 200,
+      "purpose": "ratio_document",
+      "sha256": "6473e792614b94ad8acefec33061aea75c305859dcf1f3388ad782dd9500dedb",
+      "started_at_ms": 1787483764945,
+      "url": "https://kf.dd373.com/helpdetail/dc862c7b70d74880968d2386e544b5bf.html"
+    },
+    {
+      "bytes": 59322,
+      "content_type": "text/html; charset=utf-8",
+      "http_status": 200,
+      "purpose": "user_agreement",
+      "sha256": "ab20a5be94278345736b68d895e82b1c7e4c27d92f5962f79f8cbdd728a225d0",
+      "started_at_ms": 1787483766066,
+      "url": "https://kf.dd373.com/helpdetail/78dba8ca31b44712aef8e923f6c61984.html"
+    },
+    {
+      "bytes": 26536,
+      "content_type": "text/html; charset=utf-8",
+      "http_status": 200,
+      "purpose": "disclaimer",
+      "sha256": "d56336d15733496fd1a0a3fd03c421e6f8b949f7b759cfa8196f5d7b810d4022",
+      "started_at_ms": 1787483767185,
+      "url": "https://about.dd373.com/Index.html?catenum=3732&childcatenum=37325"
+    },
+    {
+      "bytes": 290250,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "purpose": "game_list",
+      "sha256": "9de743c73f9d23006026e69ea07440980ccad6c835aa93ec93f236377d7f6afc",
+      "started_at_ms": 1787483768306,
+      "url": "https://game.dd373.com/api/game/list"
+    },
+    {
+      "bytes": 643,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "purpose": "areas",
+      "sha256": "5578f498f09d76264a03f78cb77e2f217e416225693997ee7c2d918b7889c462",
+      "started_at_ms": 1787483769426,
+      "url": "https://game.dd373.com/Api/GameOther/List?parentId=c97d2193c0a445b6a717acb6fdb17c16"
+    },
+    {
+      "bytes": 1275,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "purpose": "servers",
+      "sha256": "3e53dbb9fdff0ce5c6728040a4a1c0f45dda8effb24bdd99eb2871892a652ab4",
+      "started_at_ms": 1787483770546,
+      "url": "https://game.dd373.com/Api/GameOther/List?parentId=7b1751f92c844871ab80cae0822feea2"
+    },
+    {
+      "bytes": 9024,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "purpose": "goods_roots",
+      "sha256": "5fe7cb30e6de1711e4a99c6ed25333bde2f41fea097adc5585d9d683233c0908",
+      "started_at_ms": 1787483771666,
+      "url": "https://game.dd373.com/Api/GameGoodsType/List?parentId=c97d2193c0a445b6a717acb6fdb17c16"
+    },
+    {
+      "bytes": 10867,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "purpose": "rune_children",
+      "sha256": "af119e83b4221edfe80dd6165f7547192c3c5ccc7ab1632d1a8c76914f08210e",
+      "started_at_ms": 1787483772787,
+      "url": "https://game.dd373.com/Api/GameGoodsType/List?parentId=8405dd8baaa5498ab86ec2a7073282b4"
+    },
+    {
+      "bytes": 2993,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "purpose": "unique_children",
+      "sha256": "56e827fc43142b3a222ac0f9ee3501f71d2cb4bcba73910c17901ff33a439040",
+      "started_at_ms": 1787483773907,
+      "url": "https://game.dd373.com/Api/GameGoodsType/List?parentId=d8713381cd354aa3a1bea74e1fe23ebe"
+    },
+    {
+      "bytes": 3003,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "purpose": "set_children",
+      "sha256": "d3f639b70f5a47a1abc75bf744b3f9cf1a34b3018413253a779b00779297d954",
+      "started_at_ms": 1787483775027,
+      "url": "https://game.dd373.com/Api/GameGoodsType/List?parentId=da3c2f7ca6194d08aa5cd9b49f232f84"
+    },
+    {
+      "bytes": 3941,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "purpose": "rune_listing",
+      "sha256": "c52ef4057fa8447271d4acf06b6116a7e1419feeebc5914206785f7a50dde367",
+      "started_at_ms": 1787483776147,
+      "url": "https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_0a98da60ad754640a0b7c5a8410055c4&GameShopTypeId=a585b39a0a5c4c3ca39b20d4d219ca35"
+    },
+    {
+      "bytes": 7572,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "purpose": "unique_listing",
+      "sha256": "174d9028762dc7b913a17d596b7e110d583271abd4af5bdc7fcdb877b2366a1d",
+      "started_at_ms": 1787483777266,
+      "url": "https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_0a98da60ad754640a0b7c5a8410055c4&GameShopTypeId=ef0ca66605cf466cacd893dd90b23860"
+    },
+    {
+      "bytes": 9127,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "purpose": "set-item_listing",
+      "sha256": "604b538f7dc1a694a075d9d584f39b9c98acfad5fdb128446031a38783fbd6c2",
+      "started_at_ms": 1787483778381,
+      "url": "https://goods.dd373.com/Api/Goods/UserCenter/ApiGetShopList?gameid=c97d2193c0a445b6a717acb6fdb17c16&GameOtherId=7b1751f92c844871ab80cae0822feea2_0a98da60ad754640a0b7c5a8410055c4&GameShopTypeId=b8eb54d8659c45c4a6f8064c244012de"
+    }
+  ],
+  "scope": {
+    "game": "暗黑2：重制版国服",
+    "play_mode": "normal",
+    "season": "非赛季",
+    "server": "非赛季(术士君临)"
+  },
+  "user_agent": "Arreat-Index-Price-Semantics-Research/1.0"
+}

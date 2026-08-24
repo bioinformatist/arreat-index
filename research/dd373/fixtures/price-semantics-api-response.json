@@ -1,0 +1,77 @@
+{
+  "catalog": {
+    "catalog_version": 1,
+    "canonical_ids": [
+      "base:r17",
+      "unique:The Oculus",
+      "unique:Harlequin Crest",
+      "set-item:Tal Rasha's Adjudication",
+      "set-item:Tal Rasha's Lidless Eye"
+    ],
+    "candidate_groups": {
+      "unique": [
+        {"id":"unique:The Oculus","normalized_name":"theoculus","source":"official"},
+        {"id":"unique:The Oculus","normalized_name":"眼球","source":"community"},
+        {"id":"unique:Harlequin Crest","normalized_name":"军帽","source":"community"}
+      ],
+      "set": [
+        {"id":"set-item:Tal Rasha's Adjudication","normalized_name":"talrashasadjudication","source":"official"},
+        {"id":"set-item:Tal Rasha's Adjudication","normalized_name":"塔链","source":"community"},
+        {"id":"set-item:Tal Rasha's Lidless Eye","normalized_name":"塔杖","source":"community"}
+      ]
+    }
+  },
+  "samples": [
+    {
+      "family": "rune",
+      "canonical_id": "base:r17",
+      "response": {
+        "StatusCode": 0,
+        "StatusData": {"ResultCode":"0","ResultData":[
+          {"shopno":"r-forward","title":"synthetic rune","price":"10","singleprice":"5","amount":"2","unit":"个"},
+          {"shopno":"r-reverse","title":"synthetic rune","price":"2","singleprice":"5","amount":"10","unit":"个"},
+          {"shopno":"r-one","title":"synthetic rune","price":"7","singleprice":"7","amount":"1","unit":"个"},
+          {"shopno":"r-missing","title":"synthetic rune","singleprice":"1","amount":"2","unit":"个"},
+          {"shopno":"r-malformed","title":"synthetic rune","price":"not-a-decimal","singleprice":{},"amount":"2","unit":"个"},
+          {"shopno":"r-forward","title":"synthetic duplicate","price":"999","singleprice":"999","amount":"999","unit":"secret"},
+          {"title":"contact qq 123456","price":{},"singleprice":{},"amount":{},"unit":{}}
+        ]}
+      }
+    },
+    {
+      "family": "unique",
+      "canonical_id": "unique:The Oculus",
+      "response": {
+        "StatusCode": "0",
+        "StatusData": {"ResultData":[
+          {"shopno":"u-empty","title":"暗金 眼球","price":"25","singleprice":"999","amount":"1","unit":""},
+          {"shopno":2,"title":"The Oculus","price":30,"singleprice":"1","amount":"1","unit":"件"},
+          {"shopno":"u-empty","title":"眼球 duplicate","price":"888","singleprice":"888","amount":"888","unit":"private"},
+          {"title":"unknown item","price":{},"singleprice":{},"amount":{},"unit":{}},
+          {"title":"眼球 军帽","price":{},"singleprice":{},"amount":{},"unit":{}},
+          {"title":"眼球 微信 123456","price":{},"singleprice":{},"amount":{},"unit":{}}
+        ]}
+      }
+    },
+    {
+      "family": "set-item",
+      "canonical_id": "set-item:Tal Rasha's Adjudication",
+      "response": {
+        "StatusData": {"ResultCode":0,"ResultData":[
+          {"shopno":"s-empty","title":"绿色 塔链","price":"12.5","singleprice":"0.01","amount":"1","unit":""},
+          {"title":"塔链 塔杖","price":{},"singleprice":{},"amount":{},"unit":{}},
+          {"title":"unmatched set","price":{},"singleprice":{},"amount":{},"unit":{}},
+          {"title":"塔链 https://example.invalid","price":{},"singleprice":{},"amount":{},"unit":{}}
+        ]}
+      }
+    }
+  ],
+  "invalid_response_shapes": [
+    {},
+    {"StatusData":{"ResultData":{}}},
+    {"StatusCode":1,"StatusData":{"ResultData":[]}},
+    {"StatusData":{"ResultCode":1,"ResultData":[]}},
+    {"StatusData":{"ResultData":[{"title":1}]}}
+  ]
+}
+

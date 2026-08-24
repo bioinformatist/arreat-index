@@ -126,3 +126,44 @@ claims. Endpoint stability and redistribution rights remain unresolved. Only
 aggregate results and request provenance are retained: no raw bodies, listing
 or normalized titles, source rows, seller/account/contact/price data, generated
 snapshot, full catalog, or private cache path is published.
+
+## Family-aware price-semantics snapshot (2026-08-23)
+
+**SUPPORTED for the three fixed samples in this bounded capture.** One
+unauthenticated, read-only 13-request capture examined non-season normal play on
+the exact `非赛季(术士君临)` server. Request starts were at least 1119 ms apart,
+all responses were HTTP 200, redirects and retries were disabled, and no raw
+response body was retained. The fixed samples were `base:r17`,
+`unique:The Oculus`, and `set-item:Tal Rasha's Adjudication`; no substitute
+item, taxonomy leaf, scope, or server was used.
+
+The rune page had 23 matched rows. All had positive numeric `price`, `amount`,
+and `singleprice` fields, and their aggregate relation classification supported
+`price / amount == singleprice` within the report's relative tolerance. The
+unique page had 13 matched Oculus rows, all with positive listing prices and
+empty units. The set page had one matched Tal Rasha's Adjudication row with a
+positive listing price and an empty unit. Thus the machine-derived reason is
+`price_over_amount_direction_observed` for the rune and
+`positive_listing_price_with_empty_unit` for both named-item families. The
+complete aggregate counts and relation classes are in
+`price-semantics-report.json`; request provenance is in
+`price-semantics-manifest.json`.
+
+The interpretation was cross-checked against DD373's official ratio-goods and
+order-field documentation and against three pinned community implementations:
+`HuskyCommunicator/d2r-price-qq-bot@cebecdf5a340a4fc00132bca663f8b263041ac9c`,
+`lhe6330-cloud/d2r-equipment-checker@60bb917729acee194485ed81d16048cadd0c4aef`,
+and
+`SirYuxuan/astrbot-plugin-dnf@108e0f98c68ec671b6c108ff6492b698284d72f2`.
+Those sources are evidence only: no community code, hard-coded route,
+dependency, browser behavior, or alias was imported. The two D2R repositories
+had no detected license at the inspected revisions; the DNF repository was
+AGPL-3.0.
+
+This result is a dated observation of current asks, not a completeness,
+transaction-price, endpoint-stability, or redistribution-rights guarantee. It
+does not establish semantics for other items, families, seasons, hardcore
+markets, or servers. In particular, an empty equipment unit is not replaced by
+an invented unit. This research selects no production price basis, public field
+name, schema version, aggregation change, provider seam, or UI behavior; those
+remain decisions for a later plan.
