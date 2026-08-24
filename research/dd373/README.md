@@ -39,12 +39,38 @@ item identity and variants remain free text
 `https://game.dd373.com/Api/GameGoodsType/List?parentId=d8713381cd354aa3a1bea74e1fe23ebe`;
 `56e827fc43142b3a222ac0f9ee3501f71d2cb4bcba73910c17901ff33a439040`).
 
-Realm is structurally `国服`; server names distinguish season/non-season,
-ordinary/expert (hardcore), and two expansion labels. Ladder is represented only
-through the season wording. Platform is absent, and no separate mode field was
-observed. These are observed labels, not inferred equivalences
+Realm is structurally `国服`; server names vary on season wording, expert
+presence, and two expansion labels. Ladder is represented only through season
+wording. Platform is absent, and no separate mode field was observed. These are
+observed labels, not inferred equivalences:
 (`https://game.dd373.com/Api/GameOther/List?parentId=7b1751f92c844871ab80cae0822feea2`;
 `587a2258c1a4e5d6fcd38cbcb2e70293df3e873e6c8b634c87e39281cc507df5`).
+
+DD373 labels are provider-facing and are not official Blizzard terms; project
+mapping keeps the axes explicit:
+
+| Project concept | Game axis or object | DD373 label/field | Evidence status |
+|---|---|---|---|
+| Fixed Era | `术士君临` | `非赛季(术士君临)`, `非赛季专家(术士君临)`, `新赛季(术士君临)`, `赛季(术士君临)`, `新赛季专家(术士君临)`, `赛季专家(术士君临)` | observed |
+| Market Scope | 非天梯 + 标准 | `非赛季(术士君临)` | observed |
+| Market Scope | 非天梯 + 专家模式 | `非赛季专家(术士君临)` | observed |
+| Market Scope | 天梯 + 标准 | `新赛季(术士君临)` or `赛季(术士君临)` | observed |
+| Market Scope | 天梯 + 专家模式 | `新赛季专家(术士君临)` or `赛季专家(术士君临)` | observed |
+| Per-item Ask | Rune | `price`, `amount`, `singleprice` | helpdetail ratio text: `dc862c7b70d74880968d2386e544b5bf.html`; committed rune samples: `price-semantics-report.json` |
+| Per-listing Ask | Fixed-name Unique or Set item | `price`, observed empty `unit` | observed with `unique:The Oculus` and `set-item:Tal Rasha's Adjudication` in `price-semantics-report.json` and `price-semantics-manifest.json` |
+
+`专家` is present in expert labels and absent from normal labels.
+
+The normal-market project scope currently uses non-expert DD373 labels:
+`非赛季(术士君临)`, `新赛季(术士君临)`, and `赛季(术士君临)`.
+
+DD373 exposes price fields and order forms in its official article
+(`https://kf.dd373.com/helpdetail/dc862c7b70d74880968d2386e544b5bf.html`):
+`price`, `amount`, and `singleprice` (`单价比例`) are the observed ratio terms. The
+family-aware feasibility evidence is limited to three fixed samples recorded in
+`price-semantics-report.json`, with provenance in
+`price-semantics-manifest.json`, and is scoped to
+`base:r17`, `unique:The Oculus`, and `set-item:Tal Rasha's Adjudication`.
 
 ## random_affix_status
 

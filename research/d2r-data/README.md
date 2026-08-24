@@ -19,3 +19,21 @@ tests; unequal records sharing an item identity remain an audit failure.
 
 Incompatible changes increment `schema_version`. A field may be added as
 optional only when every old snapshot keeps the same meaning.
+
+## Evidence boundary for terminology
+
+- Installed game tables and localization files provide source identity fields and
+  localized names for identity construction.
+- Mainland Blizzard pages provide public game terminology, era/mode naming, and
+  variable-property evidence only.
+  - Mainland official `暗金` is used as a quality/category marker, not as a
+    single item.
+  - fixed-name identity may coexist with variable properties, and `底材` is a community trade term only in the cited evidence.
+  - `https://d2.blizzard.cn/news/24243863/index.html`
+  - `https://d2.blizzard.cn/news/23679609/`
+  - `https://d2.blizzard.cn/news/24296140/index.html`
+  - `https://news.blizzard.com/en-gb/article/23938388/diablo-ii-resurrected-ladder-season-4-has-concluded`
+- Project constructs Canonical IDs during extraction from source identity fields
+  plus localized names.
+- No source is interpreted as proving complete coverage over every historical
+  item, every locale, or every rune name.
