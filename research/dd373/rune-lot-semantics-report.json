@@ -1,0 +1,479 @@
+{
+  "captured_at": "2026-08-24T06:07:11Z",
+  "community_sources": [
+    {
+      "commit": "cebecdf5a340a4fc00132bca663f8b263041ac9c",
+      "detected_license": "none_detected",
+      "inspected_path": "skill/scripts/fetch_373.py",
+      "inspected_range": "563-677",
+      "repository": "HuskyCommunicator/d2r-price-qq-bot",
+      "role": "Distinguishes equipment display price from rune per-unit expressions and summarizes runes by unit price; it omits minimum group quantity and Entry Price."
+    },
+    {
+      "commit": "60bb917729acee194485ed81d16048cadd0c4aef",
+      "detected_license": "none_detected",
+      "inspected_path": "crawler.py",
+      "inspected_range": "242-277",
+      "repository": "lhe6330-cloud/d2r-equipment-checker",
+      "role": "Supports fixed-name equipment display-price handling but contains no rune-lot model."
+    },
+    {
+      "commit": "108e0f98c68ec671b6c108ff6492b698284d72f2",
+      "detected_license": "AGPL-3.0",
+      "inspected_path": "dnf_plugin/dnf_utils.py",
+      "inspected_range": "40-76",
+      "repository": "SirYuxuan/astrbot-plugin-dnf",
+      "role": "Uses the ordinary-goods endpoint and derives a comparison ratio; its amount-or-number fallback conflates quantity per lot with available lot count and is explicitly rejected here."
+    }
+  ],
+  "evidence_kind": "live_capture",
+  "fixed_canonical_ids": [
+    "base:r01",
+    "base:r05",
+    "base:r10",
+    "base:r17",
+    "base:r23",
+    "base:r33"
+  ],
+  "global": {
+    "comparable_pages_with_disjoint_minima": 1,
+    "field_model_status": "supported",
+    "grouped_offers_observed": true,
+    "ranking_divergence_observed": true,
+    "rune_pages_with_grouped_offers": 5
+  },
+  "later_model_boundary": "This aggregate proof does not change production aggregation, select a public schema, or combine independently minimized fields into an offer.",
+  "method": {
+    "amount_and_number_are_fallback_aliases": false,
+    "filter_order": [
+      "privacy",
+      "duplicate",
+      "field_classification",
+      "tuple_relation",
+      "minimum_sets"
+    ],
+    "quantity_bins": [
+      "one",
+      "two_to_nine",
+      "ten_to_ninety_nine",
+      "hundred_or_more"
+    ],
+    "relative_tolerance": 0.000001,
+    "tuple_fields": {
+      "amount": "quantity_per_lot",
+      "number": "available_lots",
+      "price": "entry_price",
+      "singleprice": "unit_price"
+    }
+  },
+  "official_source": {
+    "evidence_origin": "retained_plan018_inspection",
+    "semantic_summary": "For ordinary ratio goods, number is published lot count, amount is quantity in one lot, singleprice is the unit-price ratio, and price is product price.",
+    "url": "https://kf.dd373.com/helpdetail/dc862c7b70d74880968d2386e544b5bf.html"
+  },
+  "report_version": 1,
+  "runes": [
+    {
+      "canonical_id": "base:r01",
+      "counts": {
+        "amount_bins": {
+          "hundred_or_more": 7,
+          "one": 1,
+          "ten_to_ninety_nine": 6,
+          "two_to_nine": 1
+        },
+        "comparable_tuples": 15,
+        "duplicate_excluded": 0,
+        "fields": {
+          "amount": {
+            "missing": 0,
+            "non_numeric": 0,
+            "non_positive": 0,
+            "positive": 15,
+            "positive_integral": 15,
+            "positive_non_integral": 0
+          },
+          "number": {
+            "missing": 0,
+            "non_numeric": 0,
+            "non_positive": 0,
+            "positive": 15,
+            "positive_integral": 15,
+            "positive_non_integral": 0
+          },
+          "price": {
+            "missing": 0,
+            "non_numeric": 0,
+            "non_positive": 0,
+            "positive": 15
+          },
+          "singleprice": {
+            "missing": 0,
+            "non_numeric": 0,
+            "non_positive": 0,
+            "positive": 15
+          }
+        },
+        "privacy_excluded": 0,
+        "ratio_relations": {
+          "contradicts": 0,
+          "insufficient": 0,
+          "matches": 15
+        },
+        "records_classified": 15,
+        "records_seen": 15
+      },
+      "minimum_sets": {
+        "entry_minimum": {
+          "set_class": "mixed",
+          "tie_count": 11
+        },
+        "relationship": "overlapping_tie_sets",
+        "unit_minimum": {
+          "set_class": "grouped_only",
+          "tie_count": 1
+        }
+      },
+      "state": {
+        "reason": "comparable_tuples_without_contradiction",
+        "status": "supported"
+      }
+    },
+    {
+      "canonical_id": "base:r05",
+      "counts": {
+        "amount_bins": {
+          "hundred_or_more": 11,
+          "one": 1,
+          "ten_to_ninety_nine": 4,
+          "two_to_nine": 0
+        },
+        "comparable_tuples": 16,
+        "duplicate_excluded": 0,
+        "fields": {
+          "amount": {
+            "missing": 0,
+            "non_numeric": 0,
+            "non_positive": 0,
+            "positive": 16,
+            "positive_integral": 16,
+            "positive_non_integral": 0
+          },
+          "number": {
+            "missing": 0,
+            "non_numeric": 0,
+            "non_positive": 0,
+            "positive": 16,
+            "positive_integral": 16,
+            "positive_non_integral": 0
+          },
+          "price": {
+            "missing": 0,
+            "non_numeric": 0,
+            "non_positive": 0,
+            "positive": 16
+          },
+          "singleprice": {
+            "missing": 0,
+            "non_numeric": 0,
+            "non_positive": 0,
+            "positive": 16
+          }
+        },
+        "privacy_excluded": 0,
+        "ratio_relations": {
+          "contradicts": 0,
+          "insufficient": 0,
+          "matches": 16
+        },
+        "records_classified": 16,
+        "records_seen": 16
+      },
+      "minimum_sets": {
+        "entry_minimum": {
+          "set_class": "mixed",
+          "tie_count": 13
+        },
+        "relationship": "overlapping_tie_sets",
+        "unit_minimum": {
+          "set_class": "grouped_only",
+          "tie_count": 1
+        }
+      },
+      "state": {
+        "reason": "comparable_tuples_without_contradiction",
+        "status": "supported"
+      }
+    },
+    {
+      "canonical_id": "base:r10",
+      "counts": {
+        "amount_bins": {
+          "hundred_or_more": 14,
+          "one": 1,
+          "ten_to_ninety_nine": 2,
+          "two_to_nine": 0
+        },
+        "comparable_tuples": 17,
+        "duplicate_excluded": 0,
+        "fields": {
+          "amount": {
+            "missing": 0,
+            "non_numeric": 0,
+            "non_positive": 0,
+            "positive": 17,
+            "positive_integral": 17,
+            "positive_non_integral": 0
+          },
+          "number": {
+            "missing": 0,
+            "non_numeric": 0,
+            "non_positive": 0,
+            "positive": 17,
+            "positive_integral": 17,
+            "positive_non_integral": 0
+          },
+          "price": {
+            "missing": 0,
+            "non_numeric": 0,
+            "non_positive": 0,
+            "positive": 17
+          },
+          "singleprice": {
+            "missing": 0,
+            "non_numeric": 0,
+            "non_positive": 0,
+            "positive": 17
+          }
+        },
+        "privacy_excluded": 0,
+        "ratio_relations": {
+          "contradicts": 0,
+          "insufficient": 0,
+          "matches": 17
+        },
+        "records_classified": 17,
+        "records_seen": 17
+      },
+      "minimum_sets": {
+        "entry_minimum": {
+          "set_class": "mixed",
+          "tie_count": 17
+        },
+        "relationship": "overlapping_tie_sets",
+        "unit_minimum": {
+          "set_class": "grouped_only",
+          "tie_count": 1
+        }
+      },
+      "state": {
+        "reason": "comparable_tuples_without_contradiction",
+        "status": "supported"
+      }
+    },
+    {
+      "canonical_id": "base:r17",
+      "counts": {
+        "amount_bins": {
+          "hundred_or_more": 5,
+          "one": 3,
+          "ten_to_ninety_nine": 14,
+          "two_to_nine": 0
+        },
+        "comparable_tuples": 22,
+        "duplicate_excluded": 0,
+        "fields": {
+          "amount": {
+            "missing": 0,
+            "non_numeric": 0,
+            "non_positive": 0,
+            "positive": 22,
+            "positive_integral": 22,
+            "positive_non_integral": 0
+          },
+          "number": {
+            "missing": 0,
+            "non_numeric": 0,
+            "non_positive": 0,
+            "positive": 22,
+            "positive_integral": 22,
+            "positive_non_integral": 0
+          },
+          "price": {
+            "missing": 0,
+            "non_numeric": 0,
+            "non_positive": 0,
+            "positive": 22
+          },
+          "singleprice": {
+            "missing": 0,
+            "non_numeric": 0,
+            "non_positive": 0,
+            "positive": 22
+          }
+        },
+        "privacy_excluded": 0,
+        "ratio_relations": {
+          "contradicts": 0,
+          "insufficient": 0,
+          "matches": 22
+        },
+        "records_classified": 22,
+        "records_seen": 22
+      },
+      "minimum_sets": {
+        "entry_minimum": {
+          "set_class": "mixed",
+          "tie_count": 21
+        },
+        "relationship": "overlapping_tie_sets",
+        "unit_minimum": {
+          "set_class": "grouped_only",
+          "tie_count": 1
+        }
+      },
+      "state": {
+        "reason": "comparable_tuples_without_contradiction",
+        "status": "supported"
+      }
+    },
+    {
+      "canonical_id": "base:r23",
+      "counts": {
+        "amount_bins": {
+          "hundred_or_more": 0,
+          "one": 8,
+          "ten_to_ninety_nine": 2,
+          "two_to_nine": 6
+        },
+        "comparable_tuples": 16,
+        "duplicate_excluded": 0,
+        "fields": {
+          "amount": {
+            "missing": 0,
+            "non_numeric": 0,
+            "non_positive": 0,
+            "positive": 16,
+            "positive_integral": 16,
+            "positive_non_integral": 0
+          },
+          "number": {
+            "missing": 0,
+            "non_numeric": 0,
+            "non_positive": 0,
+            "positive": 16,
+            "positive_integral": 16,
+            "positive_non_integral": 0
+          },
+          "price": {
+            "missing": 0,
+            "non_numeric": 0,
+            "non_positive": 0,
+            "positive": 16
+          },
+          "singleprice": {
+            "missing": 0,
+            "non_numeric": 0,
+            "non_positive": 0,
+            "positive": 16
+          }
+        },
+        "privacy_excluded": 0,
+        "ratio_relations": {
+          "contradicts": 0,
+          "insufficient": 0,
+          "matches": 16
+        },
+        "records_classified": 16,
+        "records_seen": 16
+      },
+      "minimum_sets": {
+        "entry_minimum": {
+          "set_class": "mixed",
+          "tie_count": 11
+        },
+        "relationship": "disjoint_offer_sets",
+        "unit_minimum": {
+          "set_class": "grouped_only",
+          "tie_count": 1
+        }
+      },
+      "state": {
+        "reason": "comparable_tuples_without_contradiction",
+        "status": "supported"
+      }
+    },
+    {
+      "canonical_id": "base:r33",
+      "counts": {
+        "amount_bins": {
+          "hundred_or_more": 0,
+          "one": 13,
+          "ten_to_ninety_nine": 0,
+          "two_to_nine": 0
+        },
+        "comparable_tuples": 13,
+        "duplicate_excluded": 0,
+        "fields": {
+          "amount": {
+            "missing": 0,
+            "non_numeric": 0,
+            "non_positive": 0,
+            "positive": 13,
+            "positive_integral": 13,
+            "positive_non_integral": 0
+          },
+          "number": {
+            "missing": 0,
+            "non_numeric": 0,
+            "non_positive": 0,
+            "positive": 13,
+            "positive_integral": 13,
+            "positive_non_integral": 0
+          },
+          "price": {
+            "missing": 0,
+            "non_numeric": 0,
+            "non_positive": 0,
+            "positive": 13
+          },
+          "singleprice": {
+            "missing": 0,
+            "non_numeric": 0,
+            "non_positive": 0,
+            "positive": 13
+          }
+        },
+        "privacy_excluded": 0,
+        "ratio_relations": {
+          "contradicts": 0,
+          "insufficient": 0,
+          "matches": 13
+        },
+        "records_classified": 13,
+        "records_seen": 13
+      },
+      "minimum_sets": {
+        "entry_minimum": {
+          "set_class": "single_only",
+          "tie_count": 1
+        },
+        "relationship": "same_unique_offer",
+        "unit_minimum": {
+          "set_class": "single_only",
+          "tie_count": 1
+        }
+      },
+      "state": {
+        "reason": "comparable_tuples_without_contradiction",
+        "status": "supported"
+      }
+    }
+  ],
+  "scope": {
+    "game": "暗黑2：重制版国服",
+    "play_mode": "normal",
+    "season": "非赛季",
+    "server": "非赛季(术士君临)"
+  }
+}

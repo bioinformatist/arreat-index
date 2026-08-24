@@ -1,0 +1,105 @@
+{
+  "samples": [
+    {
+      "canonical_id": "base:r01",
+      "response": {
+        "StatusCode": 0,
+        "StatusData": {
+          "ResultCode": "0",
+          "ResultData": [
+            {"shopno":"r01-group","title":"synthetic rune","price":"10","singleprice":"1","amount":"10","number":3},
+            {"shopno":"r01-single","title":"synthetic rune","price":2,"singleprice":"2","amount":1,"number":"4"},
+            {"shopno":"r01-small-group","title":"synthetic rune","price":"9","singleprice":"3","amount":"3","number":"2"},
+            {"shopno":"r01-hundred","title":"synthetic rune","price":"400","singleprice":"4","amount":"100","number":"1"},
+            {"shopno":"r01-group","title":"synthetic duplicate","price":"999","singleprice":"999","amount":"1","number":"1"},
+            {"shopno":"r01-private","title":"contact qq 123456","price":"1","singleprice":"1","amount":"1","number":"1"}
+          ]
+        }
+      }
+    },
+    {
+      "canonical_id": "base:r05",
+      "response": {
+        "StatusCode": "0",
+        "StatusData": {
+          "ResultCode": 0,
+          "ResultData": [
+            {"shopno":"r05-winner","title":"synthetic rune","price":"2","singleprice":"1","amount":"2","number":"7"},
+            {"shopno":"r05-other","title":"synthetic rune","price":"12","singleprice":"2","amount":"6","number":5},
+            {"shopno":"r05-rounded","title":"synthetic rune","price":"1.0000004","singleprice":"0.3333334","amount":"3","number":"2"}
+          ]
+        }
+      }
+    },
+    {
+      "canonical_id": "base:r10",
+      "response": {
+        "StatusCode": 0,
+        "StatusData": {
+          "ResultCode": 0,
+          "ResultData": [
+            {"shopno":"r10-group-tie","title":"synthetic rune","price":"2","singleprice":"1","amount":"2","number":"5"},
+            {"shopno":"r10-single-tie","title":"synthetic rune","price":"1","singleprice":"1","amount":"1","number":"5"},
+            {"shopno":"r10-other","title":"synthetic rune","price":"6","singleprice":"2","amount":"3","number":"5"}
+          ]
+        }
+      }
+    },
+    {
+      "canonical_id": "base:r17",
+      "response": {
+        "StatusCode": 0,
+        "StatusData": {
+          "ResultCode": 0,
+          "ResultData": [
+            {"shopno":"r17-missing","title":"synthetic rune","singleprice":"1","amount":"2","number":"1"},
+            {"shopno":"r17-price-text","title":"synthetic rune","price":"not-a-decimal","singleprice":"1","amount":"2","number":"1"},
+            {"shopno":"r17-price-zero","title":"synthetic rune","price":"0","singleprice":"1","amount":"2","number":"1"},
+            {"shopno":"r17-single-missing","title":"synthetic rune","price":"2","amount":"2","number":"1"},
+            {"shopno":"r17-single-text","title":"synthetic rune","price":"2","singleprice":{},"amount":"2","number":"1"},
+            {"shopno":"r17-single-zero","title":"synthetic rune","price":"2","singleprice":"0","amount":"2","number":"1"},
+            {"shopno":"r17-amount-missing","title":"synthetic rune","price":"2","singleprice":"1","number":"1"},
+            {"shopno":"r17-amount-text-number-valid","title":"synthetic rune","price":"2","singleprice":"1","amount":"bad","number":"2"},
+            {"shopno":"r17-amount-zero","title":"synthetic rune","price":"2","singleprice":"1","amount":"0","number":"1"},
+            {"shopno":"r17-amount-fraction","title":"synthetic rune","price":"2","singleprice":"1","amount":"2.5","number":"1"},
+            {"shopno":"r17-number-missing","title":"synthetic rune","price":"2","singleprice":"1","amount":"2"},
+            {"shopno":"r17-number-text-amount-valid","title":"synthetic rune","price":"2","singleprice":"1","amount":"2","number":"bad"},
+            {"shopno":"r17-number-zero","title":"synthetic rune","price":"2","singleprice":"1","amount":"2","number":"0"},
+            {"shopno":"r17-number-fraction","title":"synthetic rune","price":"2","singleprice":"1","amount":"2","number":"1.5"},
+            {"shopno":"r17-sensitive","title":"synthetic rune","price":"2","singleprice":"1","amount":"2","number":"1","seller":"private"}
+          ]
+        }
+      }
+    },
+    {
+      "canonical_id": "base:r23",
+      "response": {
+        "StatusCode": 0,
+        "StatusData": {
+          "ResultCode": 0,
+          "ResultData": [
+            {"shopno":"r23-valid","title":"synthetic rune","price":"10","singleprice":"1","amount":"10","number":"1"},
+            {"shopno":"r23-contradiction","title":"synthetic rune","price":"20","singleprice":"3","amount":"10","number":"1"}
+          ]
+        }
+      }
+    },
+    {
+      "canonical_id": "base:r33",
+      "response": {
+        "StatusCode": 0,
+        "StatusData": {"ResultCode": 0,"ResultData": []}
+      }
+    }
+  ],
+  "invalid_response_shapes": [
+    {},
+    {"StatusData":{"ResultData":{}}},
+    {"StatusCode":1,"StatusData":{"ResultCode":0,"ResultData":[]}},
+    {"StatusCode":0,"StatusData":{"ResultCode":1,"ResultData":[]}},
+    {"StatusCode":0,"StatusData":{"ResultCode":0,"ResultData":["not-an-object"]}},
+    {"StatusCode":0,"StatusData":{"ResultCode":0,"ResultData":[{"title":1}]}},
+    {"StatusData":{"ResultCode":0,"ResultData":[]}},
+    {"StatusCode":0,"StatusData":{"ResultData":[]}}
+  ]
+}

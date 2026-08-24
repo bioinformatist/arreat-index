@@ -193,3 +193,55 @@ markets, or servers. In particular, an empty equipment unit is not replaced by
 an invented unit. This research selects no production price basis, public field
 name, schema version, aggregation change, provider seam, or UI behavior; those
 remain decisions for a later plan.
+
+## Rune lot-semantics snapshot (2026-08-24)
+
+**SUPPORTED for the six fixed rune pages in this bounded capture.** DD373's
+official ordinary ratio-goods mapping defines `amount` as the quantity in one
+lot, `price` as the lot or product price, `number` as the available lot count,
+and `singleprice` as the unit-price ratio. The product vocabulary therefore
+keeps Quantity per Lot, Lot Price, Available Lots, and Unit Price together in
+one Current Ask. Entry Price is the cost of entering that offer by buying its
+required lot. Unit Price remains useful for comparison, but it does not state
+Entry Price on its own.
+
+The three pinned community implementations establish narrower behaviors. The
+D2R price bot distinguishes unit expressions from equipment display prices but
+does not retain a rune offer's lot entry cost. The D2R equipment checker handles
+displayed equipment prices and has no rune-lot model. The DNF ordinary-endpoint
+parser relates quantity and price, but its `amount or number` fallback conflates
+quantity per lot with available lot count. This capture rejects that fallback.
+The inspected revisions and paths are recorded in
+`rune-lot-semantics-report.json`; no community code was imported.
+
+One unauthenticated, read-only capture on homePC made exactly 11 GET requests:
+five taxonomy requests followed by the ordinary first pages for `base:r01`,
+`base:r05`, `base:r10`, `base:r17`, `base:r23`, and `base:r33`. It used
+non-season normal play on exact `非赛季(术士君临)`. All responses were HTTP 200
+JSON, request starts were at least 1100 ms apart, redirects and retries were
+disabled, and every curl used `--noproxy '*'`. The new route-log slice contained
+11 DD373 lines—5 for `game.dd373.com` and 6 for `goods.dd373.com`—and all 11
+used `DIRECT`.
+
+All six pages had comparable tuples and supported the official field relation;
+none was empty, contradicted, or inconclusive. Grouped offers appeared on five
+pages. The minimum Unit Price and minimum Entry Price belonged to disjoint offer
+sets on `base:r23`, overlapped on `base:r01`, `base:r05`, `base:r10`, and
+`base:r17`, and were the same unique offer on `base:r33`. Aggregate bin, tie,
+field-classification, and exclusion counts are in
+`rune-lot-semantics-report.json`. Request provenance, timing, response hashes,
+and aggregate DIRECT-route evidence are in
+`rune-lot-semantics-manifest.json`.
+
+This snapshot covers six ordinary first pages, not pagination, sale history,
+market completeness, other runes, another season or play mode, or another
+server. The earlier one-GET connectivity probe is excluded from the corpus.
+Raw bodies, route-log lines, titles, listing and shop IDs, seller or contact
+data, monetary values, and exact lot quantities were not retained. Remote and
+local temporary trees were deleted after aggregate validation.
+
+Production still stores scalar rune price summaries and does not retain the
+associated offer tuple. A later schema change may preserve complete offers and
+derive Unit Price and Entry Price minima without combining fields from different
+listings or choosing an arbitrary winner among ties. This research does not
+implement or select that schema, its public names, aggregation behavior, or UI.
