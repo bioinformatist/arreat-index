@@ -29,11 +29,12 @@ Rust tests additionally assert item-level evaluator boundaries and the 255
 charge cap, exact duplicate-item collapse, and fatal unequal same-ID items.
 
 For the supported Linux local-install workflow, build the runnable Nix closure
-with `nix build .#arreat-data-static`, then run:
+with `nix build .#arreat-index-cli`, then run both packaged binaries from
+`./result/bin`:
 
 ```console
 catalog_path=$(./result/bin/arreat-data catalog --game-root /absolute/path/to/d2r)
-cargo run -q -p arreat-app -- market lookup --catalog "$catalog_path" --item base:r17
+./result/bin/arreat-app market lookup --catalog "$catalog_path" --item base:r17
 ```
 
 Run the catalog command a second time to exercise the validated cache hit. An
@@ -52,10 +53,10 @@ snapshots, credentials, or third-party catalogs.
 
 Real acceptance is deferred. After an approved checkpoint, the main agent uses
 an explicit dedicated SSH identity, passed with `BatchMode` and
-`IdentitiesOnly yes`; no SSH alias is required. It copies the exact package
-closure with `nix copy`, not
-a standalone binary, and discovers the install root read-only. Never record an
-IP, password, credential path/value, or absolute game path in this repository.
+`IdentitiesOnly yes`; no SSH alias is required. It repeats only with an
+approved exact checkpoint and builds the package remotely via pinned flake.
+Never record an IP, password, credential path/value, or absolute game path in
+this repository.
 
 The source whitelist is `SOURCE_WHITELIST` in the exporter. Incompatible
 format changes increment `schema_version`; additions are optional only when old

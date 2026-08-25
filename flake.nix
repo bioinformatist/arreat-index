@@ -99,8 +99,8 @@
         '';
       };
 
-      packages.${system}.arreat-data-static = pkgs.stdenv.mkDerivation {
-        pname = "arreat-data-static";
+      packages.${system}.arreat-index-cli = pkgs.stdenv.mkDerivation {
+        pname = "arreat-index-cli";
         version = "0.1.0";
         src = self;
         nativeBuildInputs = [
@@ -121,15 +121,18 @@
         buildPhase = ''
           runHook preBuild
           export HOME="$TMPDIR"
-          cargo build --release --locked -p arreat-data
+          cargo build --release --locked -p arreat-data -p arreat-app
           runHook postBuild
         '';
         installPhase = ''
           runHook preInstall
           mkdir -p "$out/bin"
           install -m755 target/release/arreat-data "$out/bin/arreat-data"
+          install -m755 target/release/arreat-app "$out/bin/arreat-app"
           wrapProgram "$out/bin/arreat-data" \
             --prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.opencc ]}
+          wrapProgram "$out/bin/arreat-app" \
+            --set SSL_CERT_FILE ${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt
           runHook postInstall
         '';
       };

@@ -32,7 +32,9 @@ arreat-app market lookup --catalog "$catalog_path" --item base:r17
 `$XDG_CACHE_HOME/arreat-index`，或回退到 `$HOME/.cache/arreat-index`。
 首次未命中时会调用只读 CascLib 提取与 OpenCC 1.3.0 转换；输入未变时再次运行会完整
 验证并复用缓存，不打开 CASC，也不调用 OpenCC。成功或失败都只保留最终目录文件，不保留
-阶段归档或完整快照。Nix 包 `arreat-data-static` 已把 OpenCC 放入运行时 PATH。
+阶段归档或完整快照。Nix 包 `arreat-index-cli` 一次性安装 `arreat-data` 与 `arreat-app`，
+其中 `arreat-data` 运行时包含 OpenCC 1.3.0，`arreat-app` 运行时通过
+`SSL_CERT_FILE` 绑定 NSS CA Bundle 以发起 DD373 HTTPS 查询。
 当前仅支持 Linux 本地安装运行；Windows CI 只保证编译和纯夹具行为。Windows 安装发现、
 实际运行验收与图形界面均推迟。
 
