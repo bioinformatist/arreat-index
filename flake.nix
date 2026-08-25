@@ -23,7 +23,7 @@
       rustPlatform = pkgs.makeRustPlatform { cargo = rustToolchain; rustc = rustToolchain; };
       workspaceCargoDeps = rustPlatform.fetchCargoVendor {
         src = self;
-        hash = "sha256-OrBQiDfNAmNWgN/Fqa/qzRgMZxRGcPGoVcUHalOlGvQ=";
+        hash = "sha256-zx9MgQya0bHO6tCyk1OzT4JHZqjfGXxOtb5MLiXA2v8=";
       };
       cascLib = pkgs.stdenv.mkDerivation {
         pname = "casclib";
@@ -107,6 +107,7 @@
           rustToolchain
           rustPlatform.cargoSetupHook
           pkgs.autoPatchelfHook
+          pkgs.makeWrapper
         ];
         buildInputs = [
           cascLib
@@ -127,6 +128,8 @@
           runHook preInstall
           mkdir -p "$out/bin"
           install -m755 target/release/arreat-data "$out/bin/arreat-data"
+          wrapProgram "$out/bin/arreat-data" \
+            --prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.opencc ]}
           runHook postInstall
         '';
       };

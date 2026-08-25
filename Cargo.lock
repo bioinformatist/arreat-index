@@ -98,6 +98,8 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "csv",
+ "getrandom 0.4.3",
+ "regex",
  "serde",
  "serde_json",
  "sha2",

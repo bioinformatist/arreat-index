@@ -2,19 +2,21 @@
 
 use std::{
     collections::{BTreeMap, BTreeSet},
-    fs::File,
     io::Read,
     path::Path,
     thread,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
-use arreat_data::{CanonicalItemId, ItemKind};
+use arreat_data::{
+    CanonicalItemId, ItemKind, NameCandidate as Candidate, NameCatalog as Catalog,
+    normalize_catalog_name,
+};
 use regex::{Regex, RegexBuilder};
 use reqwest::{Url, blocking::Client, header::CONTENT_TYPE, redirect::Policy};
 use rust_decimal::Decimal;
 use rust_decimal::prelude::ToPrimitive;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use serde_json::Value;
 use thiserror::Error;
 
@@ -173,65 +175,6 @@ impl MarketError {
     }
 }
 
-#[derive(Debug, Deserialize)]
-struct Catalog {
-    catalog_version: u32,
-    canonical_ids: Vec<CanonicalItemId>,
-    candidate_groups: CandidateGroups,
-}
-
-#[derive(Debug, Deserialize)]
-struct CandidateGroups {
-    unique: Vec<Candidate>,
-    set: Vec<Candidate>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct Candidate {
-    id: CanonicalItemId,
-    normalized_name: String,
-    source: String,
-}
-
-impl Catalog {
-    fn read(path: &Path) -> Result<Self, MarketError> {
-        let file = File::open(path).map_err(|_| MarketError::InvalidCatalog)?;
-        let catalog: Self =
-            serde_json::from_reader(file).map_err(|_| MarketError::InvalidCatalog)?;
-        catalog.validate()?;
-        Ok(catalog)
-    }
-
-    fn validate(&self) -> Result<(), MarketError> {
-        if self.catalog_version != 1 || self.canonical_ids.is_empty() {
-            return Err(MarketError::InvalidCatalog);
-        }
-        let ids: BTreeSet<_> = self.canonical_ids.iter().collect();
-        if ids.len() != self.canonical_ids.len() {
-            return Err(MarketError::InvalidCatalog);
-        }
-        for (kind, candidates) in [
-            (ItemKind::Unique, &self.candidate_groups.unique),
-            (ItemKind::SetItem, &self.candidate_groups.set),
-        ] {
-            for candidate in candidates {
-                if candidate.id.kind != kind
-                    || !ids.contains(&candidate.id)
-                    || candidate.normalized_name.is_empty()
-                    || !matches!(
-                        candidate.source.as_str(),
-                        "official" | "opencc" | "community"
-                    )
-                    || normalize_name(&candidate.normalized_name) != candidate.normalized_name
-                {
-                    return Err(MarketError::InvalidCatalog);
-                }
-            }
-        }
-        Ok(())
-    }
-}
-
 /// Concrete DD373 implementation. It deliberately exposes no provider trait.
 pub struct Dd373CurrentAskLookup {
     catalog: Catalog,
@@ -240,7 +183,7 @@ pub struct Dd373CurrentAskLookup {
 
 impl Dd373CurrentAskLookup {
     pub fn from_catalog_path(path: impl AsRef<Path>) -> Result<Self, MarketError> {
-        let catalog = Catalog::read(path.as_ref())?;
+        let catalog = Catalog::read(path.as_ref()).map_err(|_| MarketError::InvalidCatalog)?;
         let client = build_client()?;
         Ok(Self { catalog, client })
     }
@@ -270,12 +213,12 @@ impl Dd373CurrentAskLookup {
             ItemKind::Base if rune_number(item).is_some() => Ok(Family::Rune),
             ItemKind::Unique | ItemKind::SetItem => {
                 let candidates = match item.kind {
-                    ItemKind::Unique => &self.catalog.candidate_groups.unique,
-                    ItemKind::SetItem => &self.catalog.candidate_groups.set,
+                    ItemKind::Unique => self.catalog.unique_candidates(),
+                    ItemKind::SetItem => self.catalog.set_candidates(),
                     _ => unreachable!(),
                 };
-                if self.catalog.canonical_ids.contains(item)
-                    && candidates.iter().any(|c| c.id == *item)
+                if self.catalog.canonical_ids().contains(item)
+                    && candidates.iter().any(|c| c.id() == item)
                 {
                     Ok(if item.kind == ItemKind::Unique {
                         Family::Unique
@@ -518,8 +461,8 @@ fn lookup_with(
     ))?;
     let leaves = leaves_for(&children, family, item)?;
     let candidates: &[Candidate] = match family {
-        Family::Unique => &catalog.candidate_groups.unique,
-        Family::Set => &catalog.candidate_groups.set,
+        Family::Unique => catalog.unique_candidates(),
+        Family::Set => catalog.set_candidates(),
         Family::Rune => &[],
     };
     let mut records = Vec::new();
@@ -857,11 +800,11 @@ fn summarize(
             continue;
         }
         if !matches!(family, Family::Rune) {
-            let normalized = normalize_name(title);
+            let normalized = normalize_catalog_name(title);
             let ids: BTreeSet<_> = candidates
                 .iter()
-                .filter(|candidate| normalized.contains(&candidate.normalized_name))
-                .map(|candidate| &candidate.id)
+                .filter(|candidate| normalized.contains(candidate.normalized_name()))
+                .map(|candidate| candidate.id())
                 .collect();
             if ids.len() > 1 {
                 exclusions.multi_item += 1;
@@ -1111,31 +1054,6 @@ fn parse_decimal(value: &Value) -> Result<Decimal, MarketError> {
         }
         _ => Err(MarketError::Price),
     }
-}
-
-fn normalize_name(value: &str) -> String {
-    let mut text = String::with_capacity(value.len());
-    for character in value.chars() {
-        let mapped = match character {
-            '０' => '0',
-            '１' => '1',
-            '２' => '2',
-            '３' => '3',
-            '４' => '4',
-            '５' => '5',
-            '６' => '6',
-            '７' => '7',
-            '８' => '8',
-            '９' => '9',
-            other => other,
-        };
-        text.push(mapped);
-    }
-    let lower = text.to_ascii_lowercase();
-    Regex::new(r"[\p{P}\s]")
-        .unwrap()
-        .replace_all(&lower, "")
-        .into_owned()
 }
 
 fn privacy_regexes() -> Vec<Regex> {

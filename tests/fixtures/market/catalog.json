@@ -1,11 +1,26 @@
 {
   "catalog_version": 1,
-  "canonical_ids": ["unique:alpha-crown", "unique:red-moon", "set-item:jade-band", "base:r17"],
+  "source_identity": {
+    "snapshot_schema_version": 1,
+    "build_info_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "alias_map_version": 1,
+    "alias_count": 1,
+    "alias_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+    "opencc_version": "1.3.0",
+    "opencc_config": "tw2s.json",
+    "cache_key": "2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "canonical_ids": [
+    "base:r01", "base:r02", "base:r03", "base:r04", "base:r05", "base:r06", "base:r07", "base:r08", "base:r09",
+    "base:r10", "base:r11", "base:r12", "base:r13", "base:r14", "base:r15", "base:r16", "base:r17", "base:r18", "base:r19",
+    "base:r20", "base:r21", "base:r22", "base:r23", "base:r24", "base:r25", "base:r26", "base:r27", "base:r28", "base:r29",
+    "base:r30", "base:r31", "base:r32", "base:r33", "set-item:jade-band", "unique:alpha-crown", "unique:red-moon"
+  ],
   "candidate_groups": {
     "unique": [
       {"id":"unique:alpha-crown","normalized_name":"alphacrown","source":"official"},
-      {"id":"unique:alpha-crown","normalized_name":"阿尔法王冠","source":"opencc"},
       {"id":"unique:alpha-crown","normalized_name":"皇冠别名","source":"community"},
+      {"id":"unique:alpha-crown","normalized_name":"阿尔法王冠","source":"opencc"},
       {"id":"unique:red-moon","normalized_name":"redmoon","source":"official"}
     ],
     "set": [

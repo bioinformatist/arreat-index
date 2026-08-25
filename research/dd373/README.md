@@ -153,6 +153,11 @@ aggregate results and request provenance are retained: no raw bodies, listing
 or normalized titles, source rows, seller/account/contact/price data, generated
 snapshot, full catalog, or private cache path is published.
 
+The shell prototype and its standalone alias path were retired after exact
+Rust fixture parity. Production now embeds the same byte-for-byte 87-record
+project-authored alias resource in `arreat-data`; the dated counts above remain
+research evidence, not a generated catalog published by the repository.
+
 ## Family-aware price-semantics snapshot (2026-08-23)
 
 **SUPPORTED for the three fixed samples in this bounded capture.** One

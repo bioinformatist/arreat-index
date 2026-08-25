@@ -19,14 +19,22 @@ cargo run -p arreat-data -- --help
 1.97.1；完整的本地门禁是 `nix flake check`。
 无需安装 D2R 的夹具流程见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
-## 实验性当前挂单查询
+## Linux 本地目录与实验性当前挂单查询
 
-先用现有构建器临时生成名称目录（目录不应提交），再查询一个物品：
+Linux 上先从本机 D2R 安装只读构建或复用名称目录，再把输出路径显式交给查询命令：
 
 ```console
-research/dd373/build-name-catalog.sh SNAPSHOT research/dd373/name-aliases.json .cache/name-catalog.json
-cargo run -q -p arreat-app -- market lookup --catalog .cache/name-catalog.json --item base:r17
+catalog_path=$(arreat-data catalog --game-root /absolute/path/to/d2r)
+arreat-app market lookup --catalog "$catalog_path" --item base:r17
 ```
+
+可用 `--cache-root /absolute/path` 指定缓存根目录；否则使用
+`$XDG_CACHE_HOME/arreat-index`，或回退到 `$HOME/.cache/arreat-index`。
+首次未命中时会调用只读 CascLib 提取与 OpenCC 1.3.0 转换；输入未变时再次运行会完整
+验证并复用缓存，不打开 CASC，也不调用 OpenCC。成功或失败都只保留最终目录文件，不保留
+阶段归档或完整快照。Nix 包 `arreat-data-static` 已把 OpenCC 放入运行时 PATH。
+当前仅支持 Linux 本地安装运行；Windows CI 只保证编译和纯夹具行为。Windows 安装发现、
+实际运行验收与图形界面均推迟。
 
 当前仅支持 `base:r01` 至 `base:r33`，以及目录中能唯一解析的暗金和套装物品。
 `固定专名`标识的是一件唯一的 `暗金` 或 `套装` 物品，但不固定具体属性值。
@@ -38,6 +46,8 @@ cargo run -q -p arreat-app -- market lookup --catalog .cache/name-catalog.json -
 暗金和套装使用 `Per-listing` 模式返回挂牌价格统计。模块只查询、聚合与分析当前挂单，不会执行或自动化
 任何交易行为。
 模块不输出或保存标题、卖家、联系方式和原始响应。
+目录构建只读取游戏安装并写入 Arreat Index 自有缓存，不修改 D2R、Battle.net 或任何
+DD373 账户状态，也不会发布暴雪派生的归档、完整快照或完整目录。
 
 进一步阅读：
 

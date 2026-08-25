@@ -1,0 +1,129 @@
+{
+  "catalog_version": 1,
+  "source_identity": {
+    "snapshot_schema_version": 1,
+    "build_info_sha256": "f8a2de539eba355a3807d7292ee66811d6134407552bac8e2b486b573864d0fa",
+    "alias_map_version": 1,
+    "alias_count": 2,
+    "alias_sha256": "102cd65999053873c4f3afe863e72f5d8e1801a164155e6430b39fb8b87f66b5",
+    "opencc_version": "1.3.0",
+    "opencc_config": "tw2s.json",
+    "cache_key": "b2212b61df01fdc2ffdb774520d3f254eb70c52208190dabd33ddec27ec18d03"
+  },
+  "canonical_ids": [
+    "base:r01",
+    "base:r02",
+    "base:r03",
+    "base:r04",
+    "base:r05",
+    "base:r06",
+    "base:r07",
+    "base:r08",
+    "base:r09",
+    "base:r10",
+    "base:r11",
+    "base:r12",
+    "base:r13",
+    "base:r14",
+    "base:r15",
+    "base:r16",
+    "base:r17",
+    "base:r18",
+    "base:r19",
+    "base:r20",
+    "base:r21",
+    "base:r22",
+    "base:r23",
+    "base:r24",
+    "base:r25",
+    "base:r26",
+    "base:r27",
+    "base:r28",
+    "base:r29",
+    "base:r30",
+    "base:r31",
+    "base:r32",
+    "base:r33",
+    "set-item:Legacy Code Set",
+    "set-item:Modern Valid Set",
+    "unique:Ars Al'Diablolos",
+    "unique:Blank Spawnable Unique",
+    "unique:Modern Valid Unique"
+  ],
+  "candidate_groups": {
+    "unique": [
+      {
+        "id": "unique:Ars Al'Diablolos",
+        "normalized_name": "arsaldiabolos",
+        "source": "official"
+      },
+      {
+        "id": "unique:Ars Al'Diablolos",
+        "normalized_name": "学术别名",
+        "source": "community"
+      },
+      {
+        "id": "unique:Ars Al'Diablolos",
+        "normalized_name": "艾迪亚布罗斯学术",
+        "source": "opencc"
+      },
+      {
+        "id": "unique:Ars Al'Diablolos",
+        "normalized_name": "艾迪亞布羅斯學術",
+        "source": "official"
+      },
+      {
+        "id": "unique:Ars Al'Diablolos",
+        "normalized_name": "迪亚波罗斯之术",
+        "source": "official"
+      },
+      {
+        "id": "unique:Blank Spawnable Unique",
+        "normalized_name": "blankspawnableunique",
+        "source": "official"
+      },
+      {
+        "id": "unique:Blank Spawnable Unique",
+        "normalized_name": "blankspawnableunique",
+        "source": "opencc"
+      },
+      {
+        "id": "unique:Modern Valid Unique",
+        "normalized_name": "modernvalidunique",
+        "source": "official"
+      },
+      {
+        "id": "unique:Modern Valid Unique",
+        "normalized_name": "modernvalidunique",
+        "source": "opencc"
+      }
+    ],
+    "set": [
+      {
+        "id": "set-item:Legacy Code Set",
+        "normalized_name": "legacycodeset",
+        "source": "official"
+      },
+      {
+        "id": "set-item:Legacy Code Set",
+        "normalized_name": "legacycodeset",
+        "source": "opencc"
+      },
+      {
+        "id": "set-item:Modern Valid Set",
+        "normalized_name": "modernvalidset",
+        "source": "official"
+      },
+      {
+        "id": "set-item:Modern Valid Set",
+        "normalized_name": "modernvalidset",
+        "source": "opencc"
+      },
+      {
+        "id": "set-item:Modern Valid Set",
+        "normalized_name": "现代套装",
+        "source": "community"
+      }
+    ]
+  }
+}

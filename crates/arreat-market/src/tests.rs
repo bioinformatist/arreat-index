@@ -1,5 +1,6 @@
 use std::{
     collections::VecDeque,
+    fs::File,
     io::{Cursor, Read as _, Write as _},
     net::TcpListener,
     path::PathBuf,
@@ -15,7 +16,6 @@ fn fixture(name: &str) -> PathBuf {
         .join("../../tests/fixtures/market")
         .join(name)
 }
-
 fn catalog() -> Catalog {
     Catalog::read(&fixture("catalog.json")).unwrap()
 }
@@ -751,13 +751,13 @@ fn unique_and_set_use_listing_price_and_ignore_unit_price_metadata() {
         (
             Family::Unique,
             "unique:alpha-crown",
-            &catalog.candidate_groups.unique,
+            catalog.unique_candidates(),
             "Alpha Crown",
         ),
         (
             Family::Set,
             "set-item:jade-band",
-            &catalog.candidate_groups.set,
+            catalog.set_candidates(),
             "Jade Band",
         ),
     ] {
@@ -826,7 +826,8 @@ fn unique_and_set_use_listing_price_and_ignore_unit_price_metadata() {
 
 #[test]
 fn named_matching_uses_all_catalog_layers_and_filters_before_price() {
-    let candidates = &catalog().candidate_groups.unique;
+    let owned_catalog = catalog();
+    let candidates = owned_catalog.unique_candidates();
     let records = vec![
         json!({"shopno":"1","title":"Premium Alpha Crown","price":"2","singleprice":"bad"}),
         json!({"shopno":"2","title":"阿尔法王冠","price":"4"}),
@@ -1117,13 +1118,13 @@ fn non_resolved_results_preserve_family_pricing_variants() {
         (
             Family::Unique,
             "unique:alpha-crown",
-            &catalog.candidate_groups.unique[..],
+            catalog.unique_candidates(),
             "Alpha Crown",
         ),
         (
             Family::Set,
             "set-item:jade-band",
-            &catalog.candidate_groups.set[..],
+            catalog.set_candidates(),
             "Jade Band",
         ),
     ];
@@ -1175,7 +1176,7 @@ fn even_medians_are_overflow_safe_for_listing_and_item_prices() {
     let listing = summarize(
         &item("unique:alpha-crown"),
         Family::Unique,
-        &catalog.candidate_groups.unique,
+        catalog.unique_candidates(),
         vec![
             json!({"shopno":"1","title":"Alpha Crown","price":max}),
             json!({"shopno":"2","title":"Alpha Crown","price":max}),
@@ -1494,13 +1495,11 @@ fn fixed_transport_controls_and_catalog_validation_are_locked() {
     assert_eq!(REQUEST_INTERVAL_MS, 1100);
     assert_eq!(MAX_REQUESTS, 16);
     assert_eq!(MAX_BODY_BYTES, 2 * 1024 * 1024);
-    let duplicate: Catalog = serde_json::from_value(json!({
-        "catalog_version":1,"canonical_ids":["unique:a","unique:a"],
-        "candidate_groups":{"unique":[],"set":[]}
-    }))
-    .unwrap();
-    assert!(matches!(
-        duplicate.validate(),
-        Err(MarketError::InvalidCatalog)
-    ));
+    let mut duplicate = serde_json::to_value(catalog()).unwrap();
+    duplicate["canonical_ids"]
+        .as_array_mut()
+        .unwrap()
+        .push(json!("base:r33"));
+    let duplicate: Catalog = serde_json::from_value(duplicate).unwrap();
+    assert!(duplicate.validate().is_err());
 }

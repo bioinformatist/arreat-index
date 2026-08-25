@@ -27,7 +27,7 @@ pub const SOURCE_WHITELIST: &[&str] = &[
     "data/local/lng/strings/item-names.json",
 ];
 
-const MAX_FILE_BYTES: u64 = 64 * 1024 * 1024;
+pub(crate) const MAX_FILE_BYTES: u64 = 64 * 1024 * 1024;
 #[cfg(target_os = "linux")]
 const READ_CHUNK_BYTES: usize = 64 * 1024;
 
@@ -39,7 +39,6 @@ const READ_CHUNK_BYTES: usize = 64 * 1024;
 pub trait ArchiveReader {
     fn copy_named(&mut self, name: &str, destination: &mut dyn Write) -> Result<()>;
 }
-
 pub fn export_archive(game_root: &Path, output: &Path) -> Result<()> {
     #[cfg(not(target_os = "linux"))]
     {
@@ -51,20 +50,41 @@ pub fn export_archive(game_root: &Path, output: &Path) -> Result<()> {
     {
         let root = fs::canonicalize(game_root).map_err(|source| error::io(game_root, source))?;
         ensure_output_outside_root(&root, output)?;
-        let build_path = root.join(".build.info");
-        let canonical_build =
-            fs::canonicalize(&build_path).map_err(|source| error::io(&build_path, source))?;
-        if !canonical_build.starts_with(&root) {
-            return Err(Error::UnsafePath(build_path.display().to_string()));
-        }
-        let build_info =
-            fs::read(&canonical_build).map_err(|source| error::io(&canonical_build, source))?;
-        if build_info.len() as u64 > MAX_FILE_BYTES {
-            return Err(Error::Message(".build.info exceeds 64 MiB".to_owned()));
-        }
-        let mut reader = casc::CascReader::open(&root)?;
-        export_with_reader(&mut reader, &build_info, output)
+        let build_info = read_build_info(&root)?;
+        export_archive_from_root(&root, &build_info, output)
     }
+}
+
+pub(crate) fn read_build_info(root: &Path) -> Result<Vec<u8>> {
+    let build_path = root.join(".build.info");
+    let canonical_build =
+        fs::canonicalize(&build_path).map_err(|source| error::io(&build_path, source))?;
+    if !canonical_build.starts_with(root) {
+        return Err(Error::UnsafePath(build_path.display().to_string()));
+    }
+    let metadata =
+        fs::metadata(&canonical_build).map_err(|source| error::io(&canonical_build, source))?;
+    if !metadata.is_file() {
+        return Err(Error::Message(format!(
+            "{} is not a regular file",
+            build_path.display()
+        )));
+    }
+    if metadata.len() > MAX_FILE_BYTES {
+        return Err(Error::Message(".build.info exceeds 64 MiB".to_owned()));
+    }
+    fs::read(&canonical_build).map_err(|source| error::io(&canonical_build, source))
+}
+
+#[cfg(target_os = "linux")]
+pub(crate) fn export_archive_from_root(
+    root: &Path,
+    build_info: &[u8],
+    output: &Path,
+) -> Result<()> {
+    ensure_output_outside_root(root, output)?;
+    let mut reader = casc::CascReader::open(root)?;
+    export_with_reader(&mut reader, build_info, output)
 }
 
 pub fn export_with_reader(

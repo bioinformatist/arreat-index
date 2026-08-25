@@ -28,10 +28,25 @@ jq -e '
 Rust tests additionally assert item-level evaluator boundaries and the 255
 charge cap, exact duplicate-item collapse, and fatal unequal same-ID items.
 
-For local full-data work, build the runnable Nix closure with
-`nix build .#arreat-data-static`, run `export` against your own
-read-only game root into `exports/arreat-index-<build>.tar`, then normalize and
-audit into `snapshots/arreat-index-full-<build>.json`. These paths are ignored.
+For the supported Linux local-install workflow, build the runnable Nix closure
+with `nix build .#arreat-data-static`, then run:
+
+```console
+catalog_path=$(./result/bin/arreat-data catalog --game-root /absolute/path/to/d2r)
+cargo run -q -p arreat-app -- market lookup --catalog "$catalog_path" --item base:r17
+```
+
+Run the catalog command a second time to exercise the validated cache hit. An
+explicit cache uses `--cache-root /absolute/path`; the default is
+`$XDG_CACHE_HOME/arreat-index`, falling back to
+`$HOME/.cache/arreat-index`. The packaged command supplies OpenCC 1.3.0 on a
+miss. A hit does not open CASC or invoke OpenCC. Windows CI covers compilation
+and pure fixture behavior only; Windows local-install runtime support and GUI
+work are deferred.
+
+For lower-level local full-data investigation, `export`, `normalize`, and
+`audit` remain available. Archives, full snapshots, generated catalogs, and
+cache paths are ignored and must not be committed.
 Review applicable terms and never upload source tables, archives, full
 snapshots, credentials, or third-party catalogs.
 

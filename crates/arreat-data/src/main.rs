@@ -1,6 +1,6 @@
 use std::{path::PathBuf, process::ExitCode};
 
-use arreat_data::{Error, export_archive, normalize_to_path, write_audit};
+use arreat_data::{Error, catalog_local_install, export_archive, normalize_to_path, write_audit};
 use clap::{Parser, Subcommand};
 
 #[derive(Debug, Parser)]
@@ -13,9 +13,15 @@ struct Cli {
     #[command(subcommand)]
     command: Command,
 }
-
 #[derive(Debug, Subcommand)]
 enum Command {
+    /// Build or reuse a validated name catalog from a local Linux D2R install.
+    Catalog {
+        #[arg(long)]
+        game_root: PathBuf,
+        #[arg(long)]
+        cache_root: Option<PathBuf>,
+    },
     Export {
         #[arg(long)]
         game_root: PathBuf,
@@ -50,6 +56,14 @@ fn main() -> ExitCode {
 
 fn run(cli: Cli) -> Result<(), Error> {
     match cli.command {
+        Command::Catalog {
+            game_root,
+            cache_root,
+        } => {
+            let path = catalog_local_install(&game_root, cache_root.as_deref())?;
+            println!("{}", path.display());
+            Ok(())
+        }
         Command::Export { game_root, archive } => export_archive(&game_root, &archive),
         Command::Normalize { input, output } => {
             normalize_to_path(&input, &output)?;
