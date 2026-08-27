@@ -5,3 +5,6 @@
 /.cache/arreat-index/
 /exports/arreat-index-*.tar
 /snapshots/arreat-index-full-*.json
+/plugins/d2rloader/build/
+/build/d2rloader/
+/stage/d2rloader-proof/

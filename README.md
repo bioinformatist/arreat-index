@@ -1,8 +1,9 @@
 # Arreat Index
 
 Arreat Index 面向中国大陆的《暗黑破坏神 II：狱火重生》（D2R）PC
-玩家，目标是提供安全、克制的只读信息辅助。目前仓库只包含可复现的 Rust
-工程以及可复用的只读 D2R 数据提取、规范化和审计工具。仓库不发布完整游戏数据。
+玩家，目标是提供安全、克制的只读信息辅助。目前仓库包含可复现的 Rust
+工程、可复用的只读 D2R 数据提取、规范化和审计工具，以及一个实验性的
+D2RLoader 客户端物品身份证明 DLL。仓库不发布完整游戏数据。
 
 ## 开始开发
 
@@ -37,6 +38,12 @@ arreat-app market lookup --catalog "$catalog_path" --item base:r17
 `SSL_CERT_FILE` 绑定 NSS CA Bundle 以发起 DD373 HTTPS 查询。
 当前仅支持 Linux 本地安装运行；Windows CI 只保证编译和纯夹具行为。Windows 安装发现、
 实际运行验收与图形界面均推迟。
+
+[D2RLoader tooltip identity proof](plugins/d2rloader/README.md) 只在最终物品提示回调中
+显示复制出的符文编号、持有数量或暗金/套装表行号。它是面向中国大陆客户端与 Proton
+实机验收的实验性身份观察证明，不是完整界面；Windows 运行时、图形界面以及市场价格卡
+集成都仍然推迟。Windows 工作流目前只负责构建、测试和暂存 DLL、SDK 许可证及校验值，
+不能证明 Proton 实机观察已经成功。
 
 当前仅支持 `base:r01` 至 `base:r33`，以及目录中能唯一解析的暗金和套装物品。
 `固定专名`标识的是一件唯一的 `暗金` 或 `套装` 物品，但不固定具体属性值。

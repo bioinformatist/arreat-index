@@ -1,0 +1,54 @@
+name: D2RLoader plugin proof
+
+on:
+  push:
+    paths:
+      - ".github/workflows/d2rloader-plugin.yml"
+      - "plugins/d2rloader/**"
+  pull_request:
+    paths:
+      - ".github/workflows/d2rloader-plugin.yml"
+      - "plugins/d2rloader/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Configure Windows x64 plugin
+        shell: pwsh
+        run: cmake -S plugins/d2rloader -B build/d2rloader -A x64 -DD2RLPLUGIN_BUILD_EXAMPLES=OFF -DD2RLPLUGIN_BUILD_TESTS=OFF
+      - name: Build Release plugin and tests
+        shell: pwsh
+        run: cmake --build build/d2rloader --config Release --parallel
+      - name: Test pure observation formatter
+        shell: pwsh
+        run: ctest --test-dir build/d2rloader -C Release --output-on-failure
+      - name: Stage proof artifact
+        shell: pwsh
+        run: cmake --install build/d2rloader --config Release --prefix stage/d2rloader-proof
+      - name: Verify and hash staged files
+        shell: pwsh
+        run: |
+          $dll = "stage/d2rloader-proof/d2rloader/plugins/d2rl-arreat-index.dll"
+          $license = "stage/d2rloader-proof/licenses/LICENSE.D2RLoader-PluginSDK.txt"
+          if (-not (Test-Path -LiteralPath $dll -PathType Leaf)) {
+            throw "Missing staged plugin DLL: $dll"
+          }
+          if (-not (Test-Path -LiteralPath $license -PathType Leaf)) {
+            throw "Missing staged SDK license: $license"
+          }
+          $hash = (Get-FileHash -LiteralPath $dll -Algorithm SHA256).Hash.ToLowerInvariant()
+          $hashPath = "$dll.sha256"
+          $line = "$hash  d2rloader/plugins/d2rl-arreat-index.dll`n"
+          [System.IO.File]::WriteAllText($hashPath, $line, [System.Text.Encoding]::ASCII)
+      - name: Upload staged proof
+        uses: actions/upload-artifact@v4
+        with:
+          name: d2rloader-tooltip-proof-windows-x64
+          path: stage/d2rloader-proof/**
+          if-no-files-found: error
