@@ -1,34 +1,49 @@
 use std::{
-    collections::{BTreeMap, BTreeSet},
-    env, fs,
-    fs::{File, OpenOptions},
-    io::Write,
-    path::{Component, Path, PathBuf},
-    process::{Command, Stdio},
+    collections::BTreeSet,
+    fs::File,
+    path::{Path, PathBuf},
     sync::OnceLock,
 };
 
-#[cfg(unix)]
+#[cfg(any(target_os = "linux", test))]
+use std::{
+    collections::BTreeMap,
+    env,
+    fs::{self, OpenOptions},
+    io::Write,
+    path::Component,
+};
+
+#[cfg(any(target_os = "linux", all(test, unix)))]
+use std::process::{Command, Stdio};
+
+#[cfg(any(target_os = "linux", all(test, unix)))]
 use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt};
 
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+#[cfg(any(target_os = "linux", test))]
 use sha2::{Digest, Sha256};
 
-use crate::{
-    CanonicalItemId, Error, ItemKind, Locale, Result, SCHEMA_VERSION, Snapshot, audit_snapshot,
-    error, normalize_to_path,
-};
+use crate::{CanonicalItemId, Error, ItemKind, Result, SCHEMA_VERSION, error};
+
+#[cfg(any(target_os = "linux", test))]
+use crate::{Locale, Snapshot, audit_snapshot};
 
 #[cfg(target_os = "linux")]
 use crate::exporter::{export_archive_from_root, read_build_info};
+#[cfg(target_os = "linux")]
+use crate::normalize_to_path;
 
 pub const NAME_CATALOG_VERSION: u32 = 1;
 const OPENCC_VERSION: &str = "1.3.0";
 const OPENCC_CONFIG: &str = "tw2s.json";
 const ALIAS_MAP_VERSION: u32 = 1;
+#[cfg(any(target_os = "linux", test))]
 const ALIAS_PROVENANCE: &str = "bounded_dd373_observation_2026-08-22";
+#[cfg(any(target_os = "linux", test))]
 const CACHE_DIRECTORY: &str = "name-catalog-v1";
+#[cfg(any(target_os = "linux", test))]
 const EMBEDDED_ALIASES: &[u8] = include_bytes!("../resources/dd373-name-aliases-v1.json");
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -83,6 +98,7 @@ pub struct NameCatalog {
 }
 
 impl NameCatalog {
+    #[cfg(any(target_os = "linux", test))]
     pub(crate) fn build(
         snapshot: &Snapshot,
         alias_bytes: &[u8],
@@ -210,6 +226,7 @@ impl NameCatalog {
         Ok(catalog)
     }
 
+    #[cfg(any(target_os = "linux", test))]
     fn write_atomic(&self, path: &Path) -> Result<()> {
         self.validate()?;
         let mut bytes = serde_json::to_vec_pretty(self).map_err(|source| Error::Json {
@@ -298,12 +315,14 @@ impl NameCatalog {
         &self.candidate_groups.set
     }
 
+    #[cfg(any(target_os = "linux", test))]
     pub(crate) fn source_identity(&self) -> &CatalogSourceIdentity {
         &self.source_identity
     }
 }
 
 impl CatalogSourceIdentity {
+    #[cfg(any(target_os = "linux", test))]
     fn new(build_info: &[u8], alias_bytes: &[u8]) -> Result<Self> {
         let aliases = AliasMap::parse(alias_bytes)?;
         let normalized_aliases = aliases.normalized_bytes()?;
@@ -327,6 +346,7 @@ impl CatalogSourceIdentity {
         })
     }
 
+    #[cfg(any(target_os = "linux", test))]
     fn with_build_hash(mut self, build_info_sha256: String, cache_key: String) -> Self {
         self.build_info_sha256 = build_info_sha256;
         self.cache_key = cache_key;
@@ -404,11 +424,13 @@ pub fn catalog_local_install(game_root: &Path, cache_root: Option<&Path>) -> Res
     }
 }
 
+#[cfg(any(target_os = "linux", test))]
 struct CatalogResources<'a> {
     aliases: &'a [u8],
     identity: CatalogSourceIdentity,
 }
 
+#[cfg(any(target_os = "linux", test))]
 impl<'a> CatalogResources<'a> {
     fn new(aliases: &'a [u8], build_info: &[u8]) -> Result<Self> {
         Ok(Self {
@@ -418,6 +440,7 @@ impl<'a> CatalogResources<'a> {
     }
 }
 
+#[cfg(any(target_os = "linux", test))]
 trait CacheMiss {
     fn build(
         &mut self,
@@ -428,6 +451,7 @@ trait CacheMiss {
     ) -> Result<NameCatalog>;
 }
 
+#[cfg(target_os = "linux")]
 struct ProductionMiss;
 
 #[cfg(target_os = "linux")]
@@ -453,6 +477,7 @@ impl CacheMiss for ProductionMiss {
     }
 }
 
+#[cfg(any(target_os = "linux", test))]
 fn cached_catalog(
     game_root: &Path,
     cache_root: &Path,
@@ -487,11 +512,13 @@ fn cached_catalog(
     Ok(final_path)
 }
 
+#[cfg(target_os = "linux")]
 fn convert_zh_tw(snapshot: &Snapshot, staging: &Path) -> Result<Vec<String>> {
     require_opencc_version()?;
     convert_zh_tw_with(snapshot, staging, Path::new("opencc"))
 }
 
+#[cfg(any(target_os = "linux", all(test, unix)))]
 fn convert_zh_tw_with(
     snapshot: &Snapshot,
     staging: &Path,
@@ -568,6 +595,7 @@ fn convert_zh_tw_with(
     Ok(converted)
 }
 
+#[cfg(target_os = "linux")]
 fn require_opencc_version() -> Result<()> {
     let output = Command::new("opencc")
         .arg("--version")
@@ -595,6 +623,7 @@ fn require_opencc_version() -> Result<()> {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[cfg(any(target_os = "linux", test))]
 struct AliasMap {
     version: u32,
     entries: Vec<AliasEntry>,
@@ -602,6 +631,7 @@ struct AliasMap {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[cfg(any(target_os = "linux", test))]
 struct AliasEntry {
     canonical_id: CanonicalItemId,
     alias: String,
@@ -611,6 +641,7 @@ struct AliasEntry {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[cfg(any(target_os = "linux", test))]
 enum AliasKind {
     Abbreviation,
     LegacySimplified,
@@ -618,6 +649,7 @@ enum AliasKind {
     MarketShorthand,
 }
 
+#[cfg(any(target_os = "linux", test))]
 impl AliasMap {
     fn parse(bytes: &[u8]) -> Result<Self> {
         let aliases = serde_json::from_slice::<Self>(bytes).map_err(|source| Error::Json {
@@ -686,6 +718,7 @@ impl AliasMap {
     }
 }
 
+#[cfg(target_os = "linux")]
 fn default_cache_root() -> Result<PathBuf> {
     if let Some(value) = env::var_os("XDG_CACHE_HOME") {
         let root = PathBuf::from(value);
@@ -699,6 +732,7 @@ fn default_cache_root() -> Result<PathBuf> {
     Ok(home.join(".cache/arreat-index"))
 }
 
+#[cfg(any(target_os = "linux", test))]
 fn require_absolute_cache_prerequisite(label: &str, path: &Path) -> Result<()> {
     if !path.is_absolute()
         || path
@@ -712,6 +746,7 @@ fn require_absolute_cache_prerequisite(label: &str, path: &Path) -> Result<()> {
     Ok(())
 }
 
+#[cfg(any(target_os = "linux", test))]
 fn prepare_cache_root(requested: &Path, game_root: &Path) -> Result<PathBuf> {
     require_absolute_cache_prerequisite("cache root", requested)?;
     let projected = projected_canonical_path(requested)?;
@@ -725,6 +760,7 @@ fn prepare_cache_root(requested: &Path, game_root: &Path) -> Result<PathBuf> {
     Ok(canonical)
 }
 
+#[cfg(any(target_os = "linux", test))]
 fn projected_canonical_path(path: &Path) -> Result<PathBuf> {
     let mut ancestor = path;
     let mut missing = Vec::new();
@@ -744,6 +780,7 @@ fn projected_canonical_path(path: &Path) -> Result<PathBuf> {
     Ok(projected)
 }
 
+#[cfg(any(target_os = "linux", test))]
 fn ensure_disjoint(left: &Path, right: &Path) -> Result<()> {
     if left.starts_with(right) || right.starts_with(left) {
         return Err(Error::Message(format!(
@@ -755,6 +792,7 @@ fn ensure_disjoint(left: &Path, right: &Path) -> Result<()> {
     Ok(())
 }
 
+#[cfg(any(target_os = "linux", test))]
 fn exact_child_directory(parent: &Path, name: &str) -> Result<PathBuf> {
     let path = parent.join(name);
     match fs::create_dir(&path) {
@@ -769,11 +807,13 @@ fn exact_child_directory(parent: &Path, name: &str) -> Result<PathBuf> {
     Ok(canonical)
 }
 
+#[cfg(any(target_os = "linux", test))]
 struct StagingDirectory {
     path: PathBuf,
     armed: bool,
 }
 
+#[cfg(any(target_os = "linux", test))]
 impl StagingDirectory {
     fn create(cache_root: &Path, game_root: &Path) -> Result<Self> {
         for _ in 0..32 {
@@ -782,7 +822,9 @@ impl StagingDirectory {
                 .map_err(|source| Error::Message(format!("OS randomness unavailable: {source}")))?;
             let name = format!(".catalog-stage-{}", hex_bytes(&random));
             let path = cache_root.join(name);
-            let mut builder = fs::DirBuilder::new();
+            let builder = fs::DirBuilder::new();
+            #[cfg(unix)]
+            let mut builder = builder;
             #[cfg(unix)]
             builder.mode(0o700);
             match builder.create(&path) {
@@ -819,6 +861,7 @@ impl StagingDirectory {
     }
 }
 
+#[cfg(any(target_os = "linux", test))]
 impl Drop for StagingDirectory {
     fn drop(&mut self) {
         if self.armed {
@@ -827,6 +870,7 @@ impl Drop for StagingDirectory {
     }
 }
 
+#[cfg(any(target_os = "linux", test))]
 fn push_candidate(rows: &mut Vec<NameCandidate>, id: &CanonicalItemId, name: &str, source: &str) {
     let normalized_name = normalize_catalog_name(name);
     if !normalized_name.is_empty() {
@@ -838,6 +882,7 @@ fn push_candidate(rows: &mut Vec<NameCandidate>, id: &CanonicalItemId, name: &st
     }
 }
 
+#[cfg(any(target_os = "linux", test))]
 fn candidate_order(left: &NameCandidate, right: &NameCandidate) -> std::cmp::Ordering {
     (&left.id.to_string(), &left.normalized_name, &left.source).cmp(&(
         &right.id.to_string(),
@@ -858,6 +903,7 @@ fn is_rune_id(id: &CanonicalItemId) -> bool {
         .is_some_and(|number| (1..=33).contains(&number))
 }
 
+#[cfg(any(target_os = "linux", test))]
 fn reject_line_break(value: &str, label: &str) -> Result<()> {
     if value.contains(['\n', '\r']) {
         return Err(Error::Message(format!("{label} contains a line break")));
@@ -865,6 +911,7 @@ fn reject_line_break(value: &str, label: &str) -> Result<()> {
     Ok(())
 }
 
+#[cfg(any(target_os = "linux", test))]
 fn atomic_write(path: &Path, bytes: &[u8]) -> Result<()> {
     let parent = path
         .parent()
@@ -897,6 +944,7 @@ fn atomic_write(path: &Path, bytes: &[u8]) -> Result<()> {
     result
 }
 
+#[cfg(any(target_os = "linux", test))]
 fn framed_digest(parts: &[&[u8]]) -> String {
     let mut hash = Sha256::new();
     for part in parts {
@@ -906,10 +954,12 @@ fn framed_digest(parts: &[&[u8]]) -> String {
     hex_bytes(&hash.finalize())
 }
 
+#[cfg(any(target_os = "linux", test))]
 fn hex_digest(bytes: &[u8]) -> String {
     hex_bytes(&Sha256::digest(bytes))
 }
 
+#[cfg(any(target_os = "linux", test))]
 fn hex_bytes(bytes: &[u8]) -> String {
     bytes.iter().map(|byte| format!("{byte:02x}")).collect()
 }

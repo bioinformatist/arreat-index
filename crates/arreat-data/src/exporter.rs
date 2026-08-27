@@ -43,7 +43,7 @@ pub fn export_archive(game_root: &Path, output: &Path) -> Result<()> {
     #[cfg(not(target_os = "linux"))]
     {
         let _ = (game_root, output);
-        return Err(Error::UnsupportedPlatform);
+        Err(Error::UnsupportedPlatform)
     }
 
     #[cfg(target_os = "linux")]
@@ -55,6 +55,7 @@ pub fn export_archive(game_root: &Path, output: &Path) -> Result<()> {
     }
 }
 
+#[cfg(target_os = "linux")]
 pub(crate) fn read_build_info(root: &Path) -> Result<Vec<u8>> {
     let build_path = root.join(".build.info");
     let canonical_build =
@@ -203,6 +204,7 @@ fn validate_archive_name(name: &str) -> Result<()> {
     Ok(())
 }
 
+#[cfg(any(target_os = "linux", test))]
 fn casc_lookup_name(name: &str) -> Result<String> {
     validate_archive_name(name)?;
     Ok(format!("data:{name}"))
