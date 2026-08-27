@@ -1283,6 +1283,7 @@ done < "$input" > "$output"
         }
     }
 
+    #[cfg(target_os = "linux")]
     #[test]
     fn cache_hit_skips_miss_work_and_identity_changes_invalidate() {
         let root = temporary_directory("cache");
