@@ -26,6 +26,7 @@ pub const SOURCE_WHITELIST: &[&str] = &[
     "data/local/lng/strings/item-nameaffixes.json",
     "data/local/lng/strings/item-names.json",
 ];
+pub const STATIC_MOD_TARGET_PATH: &str = "data/hd/objects/destructibles/barrel_exploding.json";
 
 pub(crate) const MAX_FILE_BYTES: u64 = 64 * 1024 * 1024;
 #[cfg(target_os = "linux")]
@@ -39,22 +40,48 @@ const READ_CHUNK_BYTES: usize = 64 * 1024;
 pub trait ArchiveReader {
     fn copy_named(&mut self, name: &str, destination: &mut dyn Write) -> Result<()>;
 }
-pub fn export_archive(game_root: &Path, output: &Path) -> Result<()> {
+
+/// Opens the read-only archive for a canonical local D2R installation.
+///
+/// The callback receives the canonical game root, the bounded `.build.info`
+/// bytes, and the existing read-only archive seam. The archive reader and its
+/// native handles cannot escape the callback.
+pub fn with_archive_reader<T>(
+    game_root: &Path,
+    operation: impl FnOnce(&Path, &[u8], &mut dyn ArchiveReader) -> Result<T>,
+) -> Result<T> {
     #[cfg(not(target_os = "linux"))]
     {
-        let _ = (game_root, output);
-        return Err(Error::UnsupportedPlatform);
+        let _ = (game_root, operation);
+        Err(Error::UnsupportedPlatform)
     }
 
     #[cfg(target_os = "linux")]
     {
         let root = fs::canonicalize(game_root).map_err(|source| error::io(game_root, source))?;
-        ensure_output_outside_root(&root, output)?;
         let build_info = read_build_info(&root)?;
-        export_archive_from_root(&root, &build_info, output)
+        let mut reader = casc::CascReader::open(&root)?;
+        run_archive_operation(&root, &build_info, &mut reader, operation)
     }
 }
 
+fn run_archive_operation<T>(
+    root: &Path,
+    build_info: &[u8],
+    reader: &mut dyn ArchiveReader,
+    operation: impl FnOnce(&Path, &[u8], &mut dyn ArchiveReader) -> Result<T>,
+) -> Result<T> {
+    operation(root, build_info, reader)
+}
+
+pub fn export_archive(game_root: &Path, output: &Path) -> Result<()> {
+    with_archive_reader(game_root, |root, build_info, reader| {
+        ensure_output_outside_root(root, output)?;
+        export_with_reader(reader, build_info, output)
+    })
+}
+
+#[cfg(target_os = "linux")]
 pub(crate) fn read_build_info(root: &Path) -> Result<Vec<u8>> {
     let build_path = root.join(".build.info");
     let canonical_build =
@@ -79,12 +106,18 @@ pub(crate) fn read_build_info(root: &Path) -> Result<Vec<u8>> {
 #[cfg(target_os = "linux")]
 pub(crate) fn export_archive_from_root(
     root: &Path,
-    build_info: &[u8],
+    expected_build_info: &[u8],
     output: &Path,
 ) -> Result<()> {
-    ensure_output_outside_root(root, output)?;
-    let mut reader = casc::CascReader::open(root)?;
-    export_with_reader(&mut reader, build_info, output)
+    with_archive_reader(root, |canonical_root, build_info, reader| {
+        if build_info != expected_build_info {
+            return Err(Error::Message(
+                ".build.info changed while preparing the archive".to_owned(),
+            ));
+        }
+        ensure_output_outside_root(canonical_root, output)?;
+        export_with_reader(reader, build_info, output)
+    })
 }
 
 pub fn export_with_reader(
@@ -203,12 +236,17 @@ fn validate_archive_name(name: &str) -> Result<()> {
     Ok(())
 }
 
+#[cfg(any(target_os = "linux", test))]
 fn casc_lookup_name(name: &str) -> Result<String> {
     validate_archive_name(name)?;
+    if name != STATIC_MOD_TARGET_PATH && !SOURCE_WHITELIST.contains(&name) {
+        return Err(Error::Message(format!(
+            "archive member is not authorized: {name}"
+        )));
+    }
     Ok(format!("data:{name}"))
 }
 
-#[cfg(target_os = "linux")]
 fn ensure_output_outside_root(root: &Path, output: &Path) -> Result<()> {
     let parent = output.parent().unwrap_or_else(|| Path::new("."));
     let canonical_parent = fs::canonicalize(parent).map_err(|source| error::io(parent, source))?;
@@ -513,6 +551,32 @@ mod tests {
     }
 
     #[test]
+    fn archive_callback_borrows_the_existing_read_only_seam() {
+        let directory = temporary_directory("callback");
+        let canonical = fs::canonicalize(&directory).unwrap();
+        let mut reader = fake();
+        let copied = run_archive_operation(
+            &canonical,
+            b"build",
+            &mut reader,
+            |root, build_info, archive| {
+                assert_eq!(root, canonical);
+                assert_eq!(build_info, b"build");
+                let mut copied = Vec::new();
+                archive.copy_named(SOURCE_WHITELIST[0], &mut copied)?;
+                Ok(copied)
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            copied,
+            format!("fixture:{}", SOURCE_WHITELIST[0]).as_bytes()
+        );
+        assert_eq!(reader.requested, [SOURCE_WHITELIST[0]]);
+        fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
     fn exporter_is_deterministic_and_cleans_every_injected_failure() {
         let directory = temporary_directory("failures");
         let first = directory.join("first.tar");
@@ -546,11 +610,16 @@ mod tests {
     }
 
     #[test]
-    fn casc_lookup_adds_exact_prefix_after_validating_archive_name() {
+    fn casc_lookup_maps_only_exporter_and_static_mod_members() {
         assert_eq!(
-            casc_lookup_name("data/global/excel/armor.txt").unwrap(),
-            "data:data/global/excel/armor.txt"
+            casc_lookup_name(SOURCE_WHITELIST[0]).unwrap(),
+            format!("data:{}", SOURCE_WHITELIST[0])
         );
+        assert_eq!(
+            casc_lookup_name(STATIC_MOD_TARGET_PATH).unwrap(),
+            format!("data:{STATIC_MOD_TARGET_PATH}")
+        );
+        assert!(casc_lookup_name("data/global/excel/unrelated.txt").is_err());
         assert!(casc_lookup_name("../escape").is_err());
         assert!(casc_lookup_name("/absolute").is_err());
         assert!(casc_lookup_name("windows\\escape").is_err());

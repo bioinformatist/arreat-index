@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/arreat-core", "crates/arreat-app", "crates/arreat-data", "crates/arreat-market"]
+members = ["crates/arreat-core", "crates/arreat-app", "crates/arreat-data", "crates/arreat-market", "crates/arreat-static-mod"]
 resolver = "3"
 
 [workspace.package]

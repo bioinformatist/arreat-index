@@ -23,7 +23,7 @@
       rustPlatform = pkgs.makeRustPlatform { cargo = rustToolchain; rustc = rustToolchain; };
       workspaceCargoDeps = rustPlatform.fetchCargoVendor {
         src = self;
-        hash = "sha256-zx9MgQya0bHO6tCyk1OzT4JHZqjfGXxOtb5MLiXA2v8=";
+        hash = "sha256-xXJHnWOmp2ztQb8/AD0vpIR4nVsWQM8uyCc2tkhB+zI=";
       };
       cascLib = pkgs.stdenv.mkDerivation {
         pname = "casclib";

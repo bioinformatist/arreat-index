@@ -62,3 +62,9 @@ The source whitelist is `SOURCE_WHITELIST` in the exporter. Incompatible
 format changes increment `schema_version`; additions are optional only when old
 snapshots retain their meaning. Fixture or schema updates require reviewing the
 deterministic diff and audit report.
+
+Static-mod tests use only synthetic `UnitDefinition` JSON and temporary directories. The packaged
+Linux command is `./result/bin/arreat-app static-mod --help`; do not run `apply` during repository
+verification. Physical acceptance requires a separately approved exact checkpoint, stopped D2R,
+and the user-controlled CN D2R 3.3 host. Never commit generated `.mpq` contents, extracted objects,
+particles, archives, or third-party assets. Windows runtime remains deferred.

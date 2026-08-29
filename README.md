@@ -38,6 +38,24 @@ arreat-app market lookup --catalog "$catalog_path" --item base:r17
 当前仅支持 Linux 本地安装运行；Windows CI 只保证编译和纯夹具行为。Windows 安装发现、
 实际运行验收与图形界面均推迟。
 
+## Linux 爆炸桶静态标记
+
+完全退出 D2R 后运行：
+
+```console
+arreat-app static-mod apply --game-root /absolute/path/to/d2r --explosive-barrels on
+arreat-app static-mod status --game-root /absolute/path/to/d2r
+arreat-app static-mod apply --game-root /absolute/path/to/d2r --explosive-barrels off
+```
+
+命令只写入 `<game-root>/mods/arreat-index/arreat-index.mpq`。开启时唯一游戏派生输出是
+`data/hd/objects/destructibles/barrel_exploding.json`；关闭时完整构建只含
+`modinfo.json` 与记录 `.build.info` 摘要、配置、排序相对路径的
+`arreat-index-build.json`。部署验证同级暂存构建并在激活失败时恢复旧构建。软件包不含
+游戏或社区资产，不自动启动游戏或修改参数；用户运行时自行使用 `-mod arreat-index -txt`。
+当前仅支持 Linux，并仍需 CN D2R 3.3 人工视觉验收。D2RLoader 只用于以后物品观察与原生
+提示增强，本功能不依赖它。
+
 当前仅支持 `base:r01` 至 `base:r33`，以及目录中能唯一解析的暗金和套装物品。
 `固定专名`标识的是一件唯一的 `暗金` 或 `套装` 物品，但不固定具体属性值。
 `base:r01` 至 `base:r33` 是符文内部 ID 约定，不意味着该范围即代表支持 `底材`。

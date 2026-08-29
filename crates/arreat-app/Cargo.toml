@@ -12,4 +12,5 @@ path = "src/main.rs"
 arreat-core = { path = "../arreat-core" }
 arreat-data = { path = "../arreat-data" }
 arreat-market = { path = "../arreat-market" }
+arreat-static-mod = { path = "../arreat-static-mod" }
 serde_json.workspace = true

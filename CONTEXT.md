@@ -38,6 +38,14 @@ _Avoid_: Invalid modifier
 **Evidence Sentinel**:
 A named fixture or product evidence assertion reported by audit but not itself a universal data-integrity invariant.
 
+## Static mod terms
+
+**Static Mod Configuration**: The desired local visual settings.
+
+**Applied Static Build**: The complete Arreat Index-owned loose-mod build currently deployed locally.
+
+**Pending Static Change**: A desired configuration that differs from the applied manifest.
+
 ## D2R identity terms
 
 **Era**:

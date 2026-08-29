@@ -12,17 +12,30 @@ use arreat_data::CanonicalItemId;
 use arreat_market::{
     CurrentAskSummary, Dd373CurrentAskLookup, MarketError, MarketScope, PlayMode, SeasonScope,
 };
+use arreat_static_mod::{
+    BuildManifest, Error as StaticModError, StaticModConfig, apply_local, d2r_is_running,
+    read_applied,
+};
 
 const MARKET_HELP: &str = "查询 DD373 当前卖家挂单（实验性）\n\n用法:\n  arreat-app market lookup --catalog <PATH> --item <CANONICAL-ID> [--season <SEASON>] [--mode <MODE>]\n\n选项:\n  --catalog <PATH>          临时生成的名称目录 JSON\n  --item <CANONICAL-ID>     base:r01..base:r33，或目录中的暗金/套装物品\n  --season <SEASON>         non-season 或 latest（默认 non-season）\n  --mode <MODE>             normal 或 hardcore（默认 normal）\n  -h, --help                显示帮助\n";
+const STATIC_MOD_HELP: &str = "构建和查看 Arreat Index 本地静态模组（Linux）\n\n用法:\n  arreat-app static-mod apply --game-root <PATH> --explosive-barrels <on|off>\n  arreat-app static-mod status --game-root <PATH>\n\n选项:\n  --game-root <PATH>              D2R 安装根目录\n  --explosive-barrels <on|off>    仅为爆炸桶启用或关闭标记\n  -h, --help                      显示帮助\n";
 
 enum Command {
     Baseline,
     Version,
     Help,
+    StaticModHelp,
     Lookup {
         catalog: PathBuf,
         item: CanonicalItemId,
         market_scope: MarketScope,
+    },
+    StaticModApply {
+        game_root: PathBuf,
+        config: StaticModConfig,
+    },
+    StaticModStatus {
+        game_root: PathBuf,
     },
 }
 
@@ -49,6 +62,17 @@ fn parse_args(args: Vec<OsString>) -> Result<Command, &'static str> {
         && (args[2] == "--help" || args[2] == "-h")
     {
         return Ok(Command::Help);
+    }
+    if (args.len() == 2 && args[0] == "static-mod" && (args[1] == "--help" || args[1] == "-h"))
+        || (args.len() == 3
+            && args[0] == "static-mod"
+            && (args[1] == "apply" || args[1] == "status")
+            && (args[2] == "--help" || args[2] == "-h"))
+    {
+        return Ok(Command::StaticModHelp);
+    }
+    if args.len() >= 2 && args[0] == "static-mod" {
+        return parse_static_mod(&args);
     }
     if args.len() < 6
         || !(args.len() - 2).is_multiple_of(2)
@@ -93,6 +117,46 @@ fn parse_args(args: Vec<OsString>) -> Result<Command, &'static str> {
     })
 }
 
+fn parse_static_mod(args: &[OsString]) -> Result<Command, &'static str> {
+    if args.len() == 4 && args[1] == "status" && args[2] == "--game-root" {
+        return Ok(Command::StaticModStatus {
+            game_root: path_value(&args[3])?,
+        });
+    }
+    if args.len() != 6 || args[1] != "apply" {
+        return Err("参数无效；请运行 arreat-app static-mod --help。");
+    }
+    let mut game_root = None;
+    let mut explosive_barrels = None;
+    for pair in args[2..].chunks_exact(2) {
+        if pair[0] == "--game-root" && game_root.is_none() {
+            game_root = Some(path_value(&pair[1])?);
+        } else if pair[0] == "--explosive-barrels" && explosive_barrels.is_none() {
+            explosive_barrels =
+                Some(match pair[1].to_str().ok_or("参数值必须是 UTF-8 文本。")? {
+                    "on" => true,
+                    "off" => false,
+                    _ => return Err("--explosive-barrels 必须是 on 或 off。"),
+                });
+        } else {
+            return Err("参数无效；请运行 arreat-app static-mod --help。");
+        }
+    }
+    Ok(Command::StaticModApply {
+        game_root: game_root.ok_or("缺少 --game-root。")?,
+        config: StaticModConfig {
+            explosive_barrels: explosive_barrels.ok_or("缺少 --explosive-barrels。")?,
+        },
+    })
+}
+
+fn path_value(value: &OsString) -> Result<PathBuf, &'static str> {
+    value
+        .to_str()
+        .map(PathBuf::from)
+        .ok_or("路径必须是 UTF-8 文本。")
+}
+
 fn run(command: Command) -> ExitCode {
     match command {
         Command::Baseline => {
@@ -107,6 +171,10 @@ fn run(command: Command) -> ExitCode {
             print!("{MARKET_HELP}");
             ExitCode::SUCCESS
         }
+        Command::StaticModHelp => {
+            print!("{STATIC_MOD_HELP}");
+            ExitCode::SUCCESS
+        }
         Command::Lookup {
             catalog,
             item,
@@ -116,7 +184,83 @@ fn run(command: Command) -> ExitCode {
                 .and_then(|market| market.lookup(&item, market_scope));
             write_lookup_result(result, &mut io::stdout().lock(), &mut io::stderr().lock())
         }
+        Command::StaticModApply { game_root, config } => write_apply_result(
+            apply_local(&game_root, config),
+            &mut io::stdout().lock(),
+            &mut io::stderr().lock(),
+        ),
+        Command::StaticModStatus { game_root } => write_status_result(
+            d2r_is_running()
+                .and_then(|running| read_applied(&game_root).map(|build| (running, build))),
+            &mut io::stdout().lock(),
+            &mut io::stderr().lock(),
+        ),
     }
+}
+
+fn write_apply_result(
+    result: Result<BuildManifest, StaticModError>,
+    stdout: &mut impl Write,
+    stderr: &mut impl Write,
+) -> ExitCode {
+    match result {
+        Ok(build) => write_static_json(
+            serde_json::json!({
+                "status": "applied",
+                "game_running": false,
+                "build": build,
+            }),
+            stdout,
+            stderr,
+        ),
+        Err(error) => write_static_error(error, stderr),
+    }
+}
+
+fn write_status_result(
+    result: Result<(bool, Option<BuildManifest>), StaticModError>,
+    stdout: &mut impl Write,
+    stderr: &mut impl Write,
+) -> ExitCode {
+    match result {
+        Ok((game_running, Some(build))) => write_static_json(
+            serde_json::json!({
+                "status": "applied",
+                "game_running": game_running,
+                "build": build,
+            }),
+            stdout,
+            stderr,
+        ),
+        Ok((game_running, None)) => write_static_json(
+            serde_json::json!({
+                "status": "not_installed",
+                "game_running": game_running,
+            }),
+            stdout,
+            stderr,
+        ),
+        Err(error) => write_static_error(error, stderr),
+    }
+}
+
+fn write_static_json(
+    value: serde_json::Value,
+    stdout: &mut impl Write,
+    stderr: &mut impl Write,
+) -> ExitCode {
+    match serde_json::to_writer(&mut *stdout, &value) {
+        Ok(()) if writeln!(stdout).is_ok() => ExitCode::SUCCESS,
+        _ => {
+            let _ = writeln!(stderr, "结果序列化失败。");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn write_static_error(error: StaticModError, stderr: &mut impl Write) -> ExitCode {
+    let _ = writeln!(stderr, "{error}");
+    ExitCode::FAILURE
 }
 
 fn write_lookup_result(
@@ -167,6 +311,163 @@ mod tests {
             parse_args(args(&["market", "lookup", "--help"])),
             Ok(Command::Help)
         ));
+        assert!(matches!(
+            parse_args(args(&["static-mod", "--help"])),
+            Ok(Command::StaticModHelp)
+        ));
+    }
+
+    #[test]
+    fn static_mod_commands_accept_exact_flags_in_either_apply_order() {
+        for (value, expected) in [("on", true), ("off", false)] {
+            for values in [
+                vec![
+                    "static-mod",
+                    "apply",
+                    "--game-root",
+                    "/game",
+                    "--explosive-barrels",
+                    value,
+                ],
+                vec![
+                    "static-mod",
+                    "apply",
+                    "--explosive-barrels",
+                    value,
+                    "--game-root",
+                    "/game",
+                ],
+            ] {
+                match parse_args(args(&values)).unwrap() {
+                    Command::StaticModApply { game_root, config } => {
+                        assert_eq!(game_root, PathBuf::from("/game"));
+                        assert_eq!(config.explosive_barrels, expected);
+                    }
+                    _ => panic!("expected static apply"),
+                }
+            }
+        }
+        assert!(matches!(
+            parse_args(args(&["static-mod", "status", "--game-root", "/game"])),
+            Ok(Command::StaticModStatus { .. })
+        ));
+    }
+
+    #[test]
+    fn static_mod_rejects_missing_duplicate_invalid_and_extra_flags() {
+        for values in [
+            vec!["static-mod", "apply"],
+            vec!["static-mod", "apply", "--game-root", "/game"],
+            vec![
+                "static-mod",
+                "apply",
+                "--game-root",
+                "/game",
+                "--game-root",
+                "/other",
+            ],
+            vec![
+                "static-mod",
+                "apply",
+                "--explosive-barrels",
+                "on",
+                "--explosive-barrels",
+                "off",
+            ],
+            vec![
+                "static-mod",
+                "apply",
+                "--game-root",
+                "/game",
+                "--explosive-barrels",
+                "yes",
+            ],
+            vec!["static-mod", "status"],
+            vec![
+                "static-mod",
+                "status",
+                "--game-root",
+                "/game",
+                "--extra",
+                "x",
+            ],
+        ] {
+            assert!(parse_args(args(&values)).is_err(), "accepted {values:?}");
+        }
+    }
+
+    fn manifest() -> BuildManifest {
+        BuildManifest {
+            schema_version: 1,
+            source_build_info_sha256: "a".repeat(64),
+            config: StaticModConfig {
+                explosive_barrels: true,
+            },
+            generated_paths: vec![
+                "arreat-index-build.json".to_owned(),
+                "data/hd/objects/destructibles/barrel_exploding.json".to_owned(),
+                "modinfo.json".to_owned(),
+            ],
+        }
+    }
+
+    #[test]
+    fn static_mod_writers_emit_exact_json_shapes_and_exit_classes() {
+        let mut stdout = Vec::new();
+        let mut stderr = Vec::new();
+        assert_eq!(
+            write_apply_result(Ok(manifest()), &mut stdout, &mut stderr),
+            ExitCode::SUCCESS
+        );
+        let value: serde_json::Value = serde_json::from_slice(&stdout).unwrap();
+        assert_eq!(value["status"], "applied");
+        assert_eq!(value["game_running"], false);
+        assert_eq!(value["build"]["schema_version"], 1);
+        assert!(stderr.is_empty());
+
+        stdout.clear();
+        assert_eq!(
+            write_status_result(Ok((true, None)), &mut stdout, &mut stderr),
+            ExitCode::SUCCESS
+        );
+        assert_eq!(
+            serde_json::from_slice::<serde_json::Value>(&stdout).unwrap(),
+            serde_json::json!({"status":"not_installed","game_running":true})
+        );
+        stdout.clear();
+        assert_eq!(
+            write_status_result(Ok((false, Some(manifest()))), &mut stdout, &mut stderr),
+            ExitCode::SUCCESS
+        );
+        assert!(
+            serde_json::from_slice::<serde_json::Value>(&stdout)
+                .unwrap()
+                .get("build")
+                .is_some()
+        );
+
+        stdout.clear();
+        stderr.clear();
+        assert_eq!(
+            write_apply_result(Err(StaticModError::GameRunning), &mut stdout, &mut stderr),
+            ExitCode::FAILURE
+        );
+        assert!(stdout.is_empty());
+        assert!(String::from_utf8(stderr).unwrap().contains("完全退出游戏"));
+    }
+
+    #[test]
+    fn static_mod_help_is_truthful_and_bounded() {
+        for text in [
+            "static-mod apply",
+            "static-mod status",
+            "--game-root <PATH>",
+            "--explosive-barrels <on|off>",
+            "仅为爆炸桶",
+            "Linux",
+        ] {
+            assert!(STATIC_MOD_HELP.contains(text));
+        }
     }
     #[test]
     fn lookup_accepts_both_orders_but_no_extra_flags() {

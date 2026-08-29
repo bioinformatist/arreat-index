@@ -85,6 +85,7 @@ dependencies = [
  "arreat-core",
  "arreat-data",
  "arreat-market",
+ "arreat-static-mod",
  "serde_json",
 ]
 
@@ -117,6 +118,18 @@ dependencies = [
  "rust_decimal",
  "serde",
  "serde_json",
+ "thiserror",
+]
+
+[[package]]
+name = "arreat-static-mod"
+version = "0.1.0"
+dependencies = [
+ "arreat-data",
+ "getrandom 0.4.3",
+ "serde",
+ "serde_json",
+ "sha2",
  "thiserror",
 ]
 
