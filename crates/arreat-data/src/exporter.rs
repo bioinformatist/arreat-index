@@ -65,6 +65,7 @@ pub fn with_archive_reader<T>(
     }
 }
 
+#[cfg(any(target_os = "linux", test))]
 fn run_archive_operation<T>(
     root: &Path,
     build_info: &[u8],
