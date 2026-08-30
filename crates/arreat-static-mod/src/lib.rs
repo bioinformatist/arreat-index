@@ -149,6 +149,7 @@ fn ensure_supported() -> Result<()> {
     }
 }
 
+#[cfg(any(target_os = "linux", test))]
 fn is_d2r_process_name(name: &str) -> bool {
     name.eq_ignore_ascii_case("d2r.exe") || name.eq_ignore_ascii_case("d2r")
 }
