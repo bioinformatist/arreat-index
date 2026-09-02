@@ -833,21 +833,21 @@ enum ProbeError {
 
 #[cfg(any(target_os = "linux", test))]
 const PROMPTS: [&str; 6] = [
-    "Hover the loose inventory Vex, then press Enter.",
+    "Hover the prepared loose inventory rune, then press Enter.",
     "Move the cursor away from every item, then press Enter.",
-    "Hover the same loose inventory Vex again, then press Enter.",
+    "Hover the same loose inventory rune again, then press Enter.",
     "Hover the prepared fixed-name Unique item, then press Enter.",
     "Hover the prepared fixed-name Set item, then press Enter.",
-    "Hover the separate Vex in the stacked stash, then press Enter.",
+    "Hover the separate same-kind rune in the stacked stash, then press Enter.",
 ];
 #[cfg(any(target_os = "linux", test))]
 const STAGES: [&str; 6] = [
-    "vex_first",
+    "loose_rune_first",
     "away",
-    "vex_repeat",
+    "loose_rune_repeat",
     "unique",
     "set",
-    "stacked_vex",
+    "stacked_rune",
 ];
 
 #[cfg(any(target_os = "linux", test))]
@@ -930,7 +930,7 @@ struct HitReport {
 #[derive(Serialize)]
 struct Relations {
     nonzero: bool,
-    same_as_vex_first: bool,
+    same_as_loose_rune_first: bool,
     distinct_from_prior_items: bool,
 }
 #[cfg(any(target_os = "linux", test))]
@@ -1027,7 +1027,7 @@ fn candidate_reports(scan: &ScanResult, snapshots: &[Vec<Record>]) -> Vec<Candid
                         unit_type: record.unit_type,
                         identity_relations: Relations {
                             nonzero: record.identity != 0,
-                            same_as_vex_first: record.identity != 0
+                            same_as_loose_rune_first: record.identity != 0
                                 && record.identity == records[0].identity,
                             distinct_from_prior_items: record.identity != 0
                                 && prior.iter().all(|identity| *identity != record.identity),
@@ -1536,6 +1536,22 @@ mod tests {
         )
         .unwrap();
         assert_eq!(prompts, PROMPTS);
+        assert_eq!(
+            prompts,
+            vec![
+                "Hover the prepared loose inventory rune, then press Enter.",
+                "Move the cursor away from every item, then press Enter.",
+                "Hover the same loose inventory rune again, then press Enter.",
+                "Hover the prepared fixed-name Unique item, then press Enter.",
+                "Hover the prepared fixed-name Set item, then press Enter.",
+                "Hover the separate same-kind rune in the stacked stash, then press Enter.",
+            ]
+        );
+        assert!(
+            prompts
+                .iter()
+                .all(|prompt| { !prompt.to_ascii_lowercase().contains(concat!("ve", "x")) })
+        );
         assert_eq!(reads, 12);
         assert_eq!(
             snapshots.iter().map(Vec::len).collect::<Vec<_>>(),
@@ -1545,6 +1561,21 @@ mod tests {
             capture_sequence(&[10], |_| Ok(()), |_| None),
             Err(ProbeError::ProcessRead)
         ));
+    }
+
+    #[test]
+    fn stage_names_are_generic() {
+        assert_eq!(
+            STAGES,
+            [
+                "loose_rune_first",
+                "away",
+                "loose_rune_repeat",
+                "unique",
+                "set",
+                "stacked_rune"
+            ]
+        );
     }
 
     #[test]
@@ -1582,6 +1613,11 @@ mod tests {
             stacked: Some("supported"),
         };
         let value = serde_json::to_value(report).unwrap();
+        let text = serde_json::to_string(&value).unwrap();
+        assert!(!text.to_ascii_lowercase().contains(concat!("ve", "x")));
+        assert!(text.contains("\"same_as_loose_rune_first\""));
+        assert!(text.contains("\"loose_rune_first\""));
+        assert!(text.contains("\"stacked_rune\""));
         fn inspect(value: &serde_json::Value) {
             match value {
                 serde_json::Value::Object(object) => {
@@ -1611,7 +1647,6 @@ mod tests {
             }
         }
         inspect(&value);
-        let text = serde_json::to_string(&value).unwrap();
         assert!(!text.contains("305419896"));
     }
 }
