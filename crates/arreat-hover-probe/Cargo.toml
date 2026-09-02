@@ -1,0 +1,12 @@
+[package]
+name = "arreat-hover-probe"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
